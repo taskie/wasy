@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "target": "es6"
+    },
+    "filesGlob": [
+        "./src/js/**/*.ts",
+        "./src/js/**/*.js",
+        "./node_modules/**/*.ts",
+        "./node_modules/**/*.js"
+    ]
+}
