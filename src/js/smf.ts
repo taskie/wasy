@@ -83,11 +83,24 @@ export class Event {
 	}
 }
 
-export class NoteOnEvent extends Event { }
-export class NoteOffEvent extends Event { }
+export class NoteOffEvent extends Event {
+	get noteNumber() { return this.dataView.getUint8(0); }
+	get velocity() { return this.dataView.getUint8(1); }
+}
+
+export class NoteOnEvent extends Event {
+	get noteNumber() { return this.dataView.getUint8(0); }
+	get velocity() { return this.dataView.getUint8(1); }
+}
+
 export class PolyphonicKeyPressureEvent extends Event { }
-export class ControlChangeEvent extends Event { }
-export class ProgramChangeEvent extends Event { }
+export class ControlChangeEvent extends Event {
+	get controller() { return this.dataView.getUint8(0); }
+	get value() { return this.dataView.getUint8(1); }
+}
+export class ProgramChangeEvent extends Event {
+	get program() { return this.dataView.getUint8(0); }	
+}
 export class ChannelPressureEvent extends Event { }
 export class PitchBendEvent extends Event { }
 export class SystemExclusiveEvent extends Event { }

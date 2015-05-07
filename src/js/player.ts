@@ -1,7 +1,7 @@
 import * as smf from "./smf";
 import { EventEmitter } from "events";
 
-console.log("loaded: ", EventEmitter);
+new EventEmitter();
 
 export class Timer extends EventEmitter {
 	tick: number;
@@ -29,8 +29,9 @@ export class Timer extends EventEmitter {
 		this.timing();
 	}
 	timing() {
+		let oldTick = this.tick;
 		this.tick += this.ticksPerSecond * this.durationInSeconds;
-		this.emit("timing", this.tick, this);
+		this.emit("timing", this.tick, oldTick, this);
 		this.timerId = setTimeout(() => { this.timing(); }, this.durationInSeconds * 1000);
 	}
 	pause() {
@@ -44,8 +45,8 @@ export class Timer extends EventEmitter {
 }
 
 export class Channel extends EventEmitter {
-	static NoteOn = "noteon";
 	static NoteOff = "noteoff";
+	static NoteOn = "noteon";
 	static PolyphonicKeyPressure = "polyphonic";
 	static ControlChange = "control";
 	static ProgramChange = "program";
@@ -55,8 +56,8 @@ export class Channel extends EventEmitter {
 	static MetaEvent = "meta";	
 	
 	static eventDictionary = {
-		0x80: "noteon",
-		0x90: "noteoff",
+		0x80: "noteoff",
+		0x90: "noteon",
 		0xA0: "polyphonic",
 		0xB0: "control",
 		0xC0: "program",
@@ -71,7 +72,7 @@ export class Channel extends EventEmitter {
 	
 	emitMidiEvent(event: smf.Event) {
 		let eventType = event.status & 0xF0;
-		if (eventType === 0x80 && !event.dataView.getUint8(1)) {
+		if (event instanceof smf.NoteOnEvent && event.velocity === 0) {
 			this.emit(Channel.NoteOff, event);
 		} else if (event.status === 0xFF) {
 			this.emit(Channel.MetaEvent, event);
@@ -90,9 +91,11 @@ export class Player {
 	constructor(buffer: ArrayBuffer) {
 		this.song = new smf.Song(buffer);
 		this.song.load();
-		this.channels = new Array(16).fill(0).map((x, i) => new Channel(i));
-		this.cursors = new Array(this.numberOfTracks).fill(0);
-		this.timer = new Timer(0.3, this.resolution, this.channels[0]);
+		this.channels = new Array(16);
+		for (var i = 0; i < this.channels.length; ++i) this.channels[i] = new Channel(i);
+		this.cursors = new Array(this.numberOfTracks);
+		for (var i = 0; i < this.cursors.length; ++i) this.cursors[i] = 0;
+		this.timer = new Timer(0.1, this.resolution, this.channels[0]);
 	}
 	get resolution() { return this.song.header.resolution; }
 	get numberOfTracks() { return this.song.header.numberOfTracks; }
@@ -101,6 +104,9 @@ export class Player {
 			this.read(tick);
 		});
 		this.timer.start();
+	}
+	public pause() {
+		this.timer.pause();
 	}
 	public read(tick: number) {
 		this.song.tracks.forEach((track, trackNumber) => {
