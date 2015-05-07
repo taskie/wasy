@@ -25,7 +25,6 @@ export class Timer extends EventEmitter {
 	start() {
 		this.tick = 0; 
 		this.emit("start", this.tick, this);
-		console.log(this.ticksPerSecond);
 		this.timing();
 	}
 	timing() {

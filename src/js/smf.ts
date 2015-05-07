@@ -102,7 +102,11 @@ export class ProgramChangeEvent extends Event {
 	get program() { return this.dataView.getUint8(0); }	
 }
 export class ChannelPressureEvent extends Event { }
-export class PitchBendEvent extends Event { }
+export class PitchBendEvent extends Event {
+	get value() {
+		return this.dataView.getUint8(0) + (this.dataView.getUint8(1) << 7) - 8192; 
+	}
+}
 export class SystemExclusiveEvent extends Event { }
 
 export class MetaEvent extends Event {

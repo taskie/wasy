@@ -13,6 +13,7 @@ class Instrument implements wasy.IAudioGraphGenerator {
     gain: GainNode;
 	panner: PannerNode;
 	oscillatorType: string;
+	detuneValue: number;
 	constructor(public audioContext: AudioContext, public player: player.Player) {
 		this.panner = this.audioContext.createPanner();
 		this.panner.setPosition(0, 0, 1);
@@ -37,7 +38,7 @@ class Instrument implements wasy.IAudioGraphGenerator {
 			gain.connect(this.gain);
 			let oscillator = this.audioContext.createOscillator();
 			oscillator.type = this.oscillatorType;
-			oscillator.detune.value = Math.random() * 10 - 5;
+			oscillator.detune.value = this.detuneValue;
 			oscillator.frequency.value = tuning.frequency(e.noteNumber);
 			let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
 			oscillator.connect(gain);
@@ -76,7 +77,7 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 			const noiseNoteNumberFrameMap = {
 				37: 10000, 38: 20000, 39: 15000, 40: 25000,
 				42: 5000, 44: 3000, 46: 10000,
-				49: 80000, 51: 40000, 57: 3000
+				49: 80000, 51: 40000, 69: 2000
 			}
 			for (var noteNumber in noiseNoteNumberFrameMap) {
 				var frame = noiseNoteNumberFrameMap[noteNumber];
@@ -92,36 +93,35 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 		}
 		audioGraph.on("noteon", (e: smf.NoteOnEvent) => {
 			var gain = this.audioContext.createGain();
-			gain.gain.value = 0.5;
+			gain.gain.value = 0.4;
 			gain.connect(this.gain);
 			if (e.noteNumber in UntunedInstrument.noiseBuffers) {
 				var filter = this.audioContext.createBiquadFilter();
 				filter.type = "bandpass";
 				if (42 <= e.noteNumber && e.noteNumber <= 51) {
-					filter.frequency.value = tuning.frequency(e.noteNumber + 64);
+					filter.frequency.value = tuning.frequency(e.noteNumber + 70);
 				} else {
-					filter.frequency.value = tuning.frequency(e.noteNumber + 80);
+					filter.frequency.value = tuning.frequency(e.noteNumber + 50);
 				}
 				filter.Q.value = 1;
 				filter.connect(gain);
 				var source = this.audioContext.createBufferSource();
 				source.buffer = UntunedInstrument.noiseBuffers[e.noteNumber];
-				source.playbackRate.value = 1 + 0.02 * Math.random() - 0.01;
 				source.connect(filter);
 				let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
-				console.log(d, e.toWebMidiLinkString());
 				source.start(accurateTimer.currentTime + 0.5 + d);
 				audioGraph.data = { gain, filter, source };
 			} else {
 				let gain = this.audioContext.createGain();
-				gain.gain.value = e.velocity / 127 * 0.4;
 				gain.connect(this.gain);
 				let oscillator = this.audioContext.createOscillator();
 				oscillator.type = "square";
 				oscillator.detune.value = Math.random() * 10 - 5;
 				let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
 				let now = accurateTimer.currentTime + 0.5 + d;
-				oscillator.frequency.setValueAtTime(tuning.frequency(e.noteNumber + 19), now);
+				gain.gain.setValueAtTime(e.velocity / 127 * 0.15, now);
+				gain.gain.linearRampToValueAtTime(0, now + 0.3);
+				oscillator.frequency.setValueAtTime(tuning.frequency(e.noteNumber + 24), now);
 				oscillator.frequency.linearRampToValueAtTime(50, now + 0.2);
 				oscillator.connect(gain);
 				oscillator.start(now);
@@ -225,6 +225,19 @@ document.addEventListener("DOMContentLoaded", (e) => {
 					});
 					channel.on("noteoff", (e: smf.NoteOffEvent) => {
 						pool.noteOff(e);
+					});
+					channel.on("pitch", (e: smf.PitchBendEvent) => {
+						let map = pool.noteNumberGraphMap;
+						for (var key in map) {
+							let audioGraph = map[key];
+							if (audioGraph.data && audioGraph.data["oscillator"]) {
+								let oscillator: OscillatorNode = audioGraph.data["oscillator"];
+								oscillator.detune.value = e.value / 8192 * 200;
+							}
+						}
+						if (inst instanceof Instrument) {
+							inst.detuneValue = e.value / 8192 * 200;
+						}
 					});
 					const programMap = {
 						0: "sine",
