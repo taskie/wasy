@@ -29,6 +29,26 @@ function dataViewGetUintVariable(dataView: DataView, byteOffset: number) {
 	return { value, byteLength: pos };
 }
 
+function dataViewGetSubDataView(dataView: DataView, byteOffset: number, byteLength?: number) {
+	if (typeof byteLength === "undefined") byteLength = dataView.byteLength - byteOffset;
+	return new DataView(dataView.buffer, dataView.byteOffset + byteOffset, byteLength);
+}
+
+function dataViewGetUint(dataView: DataView, byteOffset: number, isLittleEndian: boolean, byteLength?: number) {
+	var value = 0;
+	if (typeof byteLength === "undefined") byteLength = dataView.byteLength - byteOffset;
+	if (isLittleEndian) {
+		for (var i = byteLength - 1; i >= 0; --i) {
+			value = (value << 8) + dataView.getUint8(byteOffset + i);
+		}
+	} else {
+		for (var i = 0; i < byteLength; ++i) {
+			value = (value << 8) + dataView.getUint8(byteOffset + i);
+		}
+	}
+	return value;
+}
+
 export class Event {
 	constructor(public dataView: DataView, public tick: number, public status: number) { }
 	toWebMidiLinkString() {
@@ -37,6 +57,73 @@ export class Event {
 			data.push(this.dataView.getUint8(i));
 		}
 		return "midi," + data.map((x) => x.toString(16)).join(",");
+	}
+	static statusEventMap: { [n: number]: typeof Event};
+	static create(dataView: DataView, tick: number, status: number): Event {
+		if (!this.statusEventMap) {
+			this.statusEventMap = {
+				0x80: NoteOnEvent,
+				0x90: NoteOffEvent,
+				0xA0: PolyphonicKeyPressureEvent,
+				0xB0: ControlChangeEvent,
+				0xC0: ProgramChangeEvent,
+				0xD0: ChannelPressureEvent,
+				0xE0: PitchBendEvent,
+				0xF0: SystemExclusiveEvent,
+				0xFF: MetaEvent,
+			};
+		}
+		let statusType = status & 0xF0;
+		if (status === 0xFF) {
+			return MetaEvent.create(dataView, tick, status);
+		} else {
+			let EventClass: typeof Event = this.statusEventMap[statusType];
+			return new EventClass(dataView, tick, status);
+		}
+	}
+}
+
+export class NoteOnEvent extends Event { }
+export class NoteOffEvent extends Event { }
+export class PolyphonicKeyPressureEvent extends Event { }
+export class ControlChangeEvent extends Event { }
+export class ProgramChangeEvent extends Event { }
+export class ChannelPressureEvent extends Event { }
+export class PitchBendEvent extends Event { }
+export class SystemExclusiveEvent extends Event { }
+
+export class MetaEvent extends Event {
+	static typeIndexEventMap: { [n: number]: typeof MetaEvent};
+	static create(dataView: DataView, tick: number, status: number): MetaEvent {
+		if (!this.typeIndexEventMap) {
+			this.typeIndexEventMap = {
+				0x51: TempoMetaEvent
+			}
+		}
+		let typeIndex = dataView.getUint8(0);
+		if (typeIndex in this.typeIndexEventMap) {
+			let EventClass = this.typeIndexEventMap[typeIndex];
+			return new EventClass(dataView, tick, status);
+		} else {
+			return new MetaEvent(dataView, tick, status);
+		}
+	}
+	get typeIndex() { return this.dataView.getUint8(0); }
+	get data() {
+		let {value, byteLength} = dataViewGetUintVariable(this.dataView, 1);
+		return dataViewGetSubDataView(this.dataView, 1 + byteLength, value);
+	}
+}
+
+export class TempoMetaEvent extends MetaEvent {
+	get rawTempo() {
+		return dataViewGetUint(this.data, 0, false);
+	}
+	get secondsPerBeat() {
+		return this.rawTempo * 10e-7;	// ?
+	}
+	get beatsPerMinute() {
+		return 60 / this.secondsPerBeat;
 	}
 }
 
@@ -69,7 +156,7 @@ export class EventBuilder {
 				break;
 		}
 		let dataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + byteOffset, length);
-		return new Event(dataView, tick, status);
+		return Event.create(dataView, tick, status);
 	}
 }
 

@@ -1,4 +1,6 @@
 import * as player from "./player";
+import * as smf from "./smf";
+import { EventEmitter } from "events";
 
 var midiPlayer: player.Player;
 
@@ -13,8 +15,11 @@ document.addEventListener("DOMContentLoaded", (e) => {
 			if (buffer) {
 				midiPlayer = new player.Player(buffer);
 				(<any>window).midiPlayer = midiPlayer;
-				midiPlayer.channels[0].on("noteon", (e) => {
-					console.log(e);
+				midiPlayer.channels[9].on("all", (e: smf.Event) => {
+					if (e instanceof smf.TempoMetaEvent) {
+						console.log("Tempo:", e.beatsPerMinute, e.rawTempo, e);
+					}
+					console.log(e.tick, e.toWebMidiLinkString());
 				});
 				midiPlayer.play();
 			}
