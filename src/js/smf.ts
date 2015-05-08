@@ -1,4 +1,6 @@
 import * as xiff from "./xiff";
+import * as dvu from "./data-view-util";
+import * as midi from "./midi";
 
 export class Header {
 	format: number;
@@ -15,138 +17,9 @@ export class Header {
 	}
 }
 
-function dataViewGetUintVariable(dataView: DataView, byteOffset: number) {
-	var value = 0;
-	var pos = 0;
-	while (true) {
-		let byte = dataView.getUint8(byteOffset + pos);
-		++pos;
-		let msb = byte & 0b10000000;
-		let val = byte & 0b01111111;
-		value = (value << 7) + val;
-		if (!msb) break;
-	}
-	return { value, byteLength: pos };
-}
-
-function dataViewGetSubDataView(dataView: DataView, byteOffset: number, byteLength?: number) {
-	if (typeof byteLength === "undefined") byteLength = dataView.byteLength - byteOffset;
-	return new DataView(dataView.buffer, dataView.byteOffset + byteOffset, byteLength);
-}
-
-function dataViewGetUint(dataView: DataView, byteOffset: number, isLittleEndian: boolean, byteLength?: number) {
-	var value = 0;
-	if (typeof byteLength === "undefined") byteLength = dataView.byteLength - byteOffset;
-	if (isLittleEndian) {
-		for (var i = byteLength - 1; i >= 0; --i) {
-			value = (value << 8) + dataView.getUint8(byteOffset + i);
-		}
-	} else {
-		for (var i = 0; i < byteLength; ++i) {
-			value = (value << 8) + dataView.getUint8(byteOffset + i);
-		}
-	}
-	return value;
-}
-
-export class Event {
-	constructor(public dataView: DataView, public tick: number, public status: number) { }
-	toWebMidiLinkString() {
-		let data = [this.status];
-		for (var i = 0; i < this.dataView.byteLength; ++i) {
-			data.push(this.dataView.getUint8(i));
-		}
-		return "midi," + data.map((x) => x.toString(16)).join(",");
-	}
-	static statusEventMap: { [n: number]: typeof Event};
-	static create(dataView: DataView, tick: number, status: number): Event {
-		if (!this.statusEventMap) {
-			this.statusEventMap = {
-				0x80: NoteOnEvent,
-				0x90: NoteOffEvent,
-				0xA0: PolyphonicKeyPressureEvent,
-				0xB0: ControlChangeEvent,
-				0xC0: ProgramChangeEvent,
-				0xD0: ChannelPressureEvent,
-				0xE0: PitchBendEvent,
-				0xF0: SystemExclusiveEvent,
-				0xFF: MetaEvent,
-			};
-		}
-		let statusType = status & 0xF0;
-		if (status === 0xFF) {
-			return MetaEvent.create(dataView, tick, status);
-		} else {
-			let EventClass: typeof Event = this.statusEventMap[statusType];
-			return new EventClass(dataView, tick, status);
-		}
-	}
-}
-
-export class NoteOffEvent extends Event {
-	get noteNumber() { return this.dataView.getUint8(0); }
-	get velocity() { return this.dataView.getUint8(1); }
-}
-
-export class NoteOnEvent extends Event {
-	get noteNumber() { return this.dataView.getUint8(0); }
-	get velocity() { return this.dataView.getUint8(1); }
-}
-
-export class PolyphonicKeyPressureEvent extends Event { }
-export class ControlChangeEvent extends Event {
-	get controller() { return this.dataView.getUint8(0); }
-	get value() { return this.dataView.getUint8(1); }
-}
-export class ProgramChangeEvent extends Event {
-	get program() { return this.dataView.getUint8(0); }	
-}
-export class ChannelPressureEvent extends Event { }
-export class PitchBendEvent extends Event {
-	get value() {
-		return this.dataView.getUint8(0) + (this.dataView.getUint8(1) << 7) - 8192; 
-	}
-}
-export class SystemExclusiveEvent extends Event { }
-
-export class MetaEvent extends Event {
-	static typeIndexEventMap: { [n: number]: typeof MetaEvent};
-	static create(dataView: DataView, tick: number, status: number): MetaEvent {
-		if (!this.typeIndexEventMap) {
-			this.typeIndexEventMap = {
-				0x51: TempoMetaEvent
-			}
-		}
-		let typeIndex = dataView.getUint8(0);
-		if (typeIndex in this.typeIndexEventMap) {
-			let EventClass = this.typeIndexEventMap[typeIndex];
-			return new EventClass(dataView, tick, status);
-		} else {
-			return new MetaEvent(dataView, tick, status);
-		}
-	}
-	get typeIndex() { return this.dataView.getUint8(0); }
-	get data() {
-		let {value, byteLength} = dataViewGetUintVariable(this.dataView, 1);
-		return dataViewGetSubDataView(this.dataView, 1 + byteLength, value);
-	}
-}
-
-export class TempoMetaEvent extends MetaEvent {
-	get rawTempo() {
-		return dataViewGetUint(this.data, 0, false);
-	}
-	get secondsPerBeat() {
-		return this.rawTempo * 10e-7;	// ?
-	}
-	get beatsPerMinute() {
-		return 60 / this.secondsPerBeat;
-	}
-}
-
 export class EventBuilder {
 	constructor(public dataView: DataView) { }
-	build(tick: number, status: number, byteOffset: number): Event {
+	build(tick: number, status: number, byteOffset: number): midi.Event {
 		var length = 0;
 		switch (status & 0b11110000) {
 			case 0x80:
@@ -164,21 +37,21 @@ export class EventBuilder {
 				break;
 			case 0xF0:
 				if (status == 0xFF) {
-					let {byteLength, value} = dataViewGetUintVariable(this.dataView, byteOffset + 1);
+					let {byteLength, value} = dvu.dataViewGetUintVariable(this.dataView, byteOffset + 1);
 					length = 1 + byteLength + value;
 				} else {
-					let {byteLength, value} = dataViewGetUintVariable(this.dataView, byteOffset);
+					let {byteLength, value} = dvu.dataViewGetUintVariable(this.dataView, byteOffset);
 					length = byteLength + value;
 				}
 				break;
 		}
 		let dataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + byteOffset, length);
-		return Event.create(dataView, tick, status);
+		return midi.Event.create(dataView, tick, status);
 	}
 }
 
 export class Track {
-	public events: Event[];
+	public events: midi.Event[];
 	constructor(public dataView: DataView) { }
 	load() {
 		var pos = 0;
@@ -188,7 +61,7 @@ export class Track {
 		this.events = [];
 		while (pos < this.dataView.byteLength) {
 			{
-				let {byteLength, value} = dataViewGetUintVariable(this.dataView, pos);
+				let {byteLength, value} = dvu.dataViewGetUintVariable(this.dataView, pos);
 				pos += byteLength;
 				tick += value;
 			}

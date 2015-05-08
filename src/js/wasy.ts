@@ -1,3 +1,4 @@
+import * as midi from "./midi";
 import * as smf from "./smf";
 import { EventEmitter } from "events";
 
@@ -32,11 +33,11 @@ export class AudioGraph extends EventEmitter {
         this.emit("destroy", this);
     }
     
-    noteOn(event: smf.NoteOnEvent) {
+    noteOn(event: midi.NoteOnEvent) {
         this.emit("noteon", event, this);
     }
     
-    noteOff(event: smf.NoteOffEvent) {
+    noteOff(event: midi.NoteOffEvent) {
         this.emit("noteoff", event, this);
     }
 }
@@ -54,7 +55,7 @@ export class AudioGraphPool {
         this._noteNumberQueue = [];
     }
     
-    noteOn(event: smf.NoteOnEvent) {
+    noteOn(event: midi.NoteOnEvent) {
         let audioGraph = this.audioGraphGenerator.generateAudioGraph();
         this._regist(event.noteNumber, audioGraph);
         audioGraph.noteOn(event);
@@ -73,7 +74,7 @@ export class AudioGraphPool {
         }
     }
     
-    noteOff(event: smf.NoteOffEvent) {
+    noteOff(event: midi.NoteOffEvent) {
         let audioGraph = this.find(event.noteNumber);
         if (audioGraph == null) return;
         audioGraph.noteOff(event);

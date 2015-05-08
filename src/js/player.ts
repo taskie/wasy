@@ -1,3 +1,4 @@
+import * as midi from "./midi";
 import * as smf from "./smf";
 import { EventEmitter } from "events";
 
@@ -13,12 +14,12 @@ export class Timer extends EventEmitter {
 	constructor(public durationInSeconds: number, public resolution: number, channel: Channel) {
 		super();
 		this.beatsPerMinute = 120;
-		channel.on("meta", (event: smf.MetaEvent) => {
+		channel.on("meta", (event: midi.MetaEvent) => {
 			this.processMetaEvent(event);
 		});
 	}
-	processMetaEvent(event: smf.MetaEvent) {
-		if (event instanceof smf.TempoMetaEvent) {
+	processMetaEvent(event: midi.MetaEvent) {
+		if (event instanceof midi.TempoMetaEvent) {
 			this.secondsPerBeat = event.secondsPerBeat;
 		}
 	}
@@ -69,9 +70,9 @@ export class Channel extends EventEmitter {
 		super();
 	}
 	
-	emitMidiEvent(event: smf.Event) {
+	emitMidiEvent(event: midi.Event) {
 		let eventType = event.status & 0xF0;
-		if (event instanceof smf.NoteOnEvent && event.velocity === 0) {
+		if (event instanceof midi.NoteOnEvent && event.velocity === 0) {
 			this.emit(Channel.NoteOff, event);
 		} else if (event.status === 0xFF) {
 			this.emit(Channel.MetaEvent, event);

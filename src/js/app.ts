@@ -1,4 +1,5 @@
 import * as player from "./player";
+import * as midi from "./midi";
 import * as smf from "./smf";
 import * as wasy from "./wasy";
 import { EventEmitter } from "events";
@@ -33,7 +34,7 @@ class Instrument implements wasy.IAudioGraphGenerator {
 	}
 	generateAudioGraph() {
 		let audioGraph = new wasy.AudioGraph();
-		audioGraph.on("noteon", (e: smf.NoteOnEvent) => {
+		audioGraph.on("noteon", (e: midi.NoteOnEvent) => {
 			let gain = this.audioContext.createGain();
 			gain.connect(this.gain);
 			let oscillator = this.audioContext.createOscillator();
@@ -48,7 +49,7 @@ class Instrument implements wasy.IAudioGraphGenerator {
 			gain.gain.linearRampToValueAtTime(0, now + 1);
 			audioGraph.data = { gain, oscillator };
 		});
-		audioGraph.on("noteoff", (e: smf.NoteOffEvent) => {
+		audioGraph.on("noteoff", (e: midi.NoteOffEvent) => {
 			let {gain, oscillator} = audioGraph.data;
 			let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
 			oscillator.stop(accurateTimer.currentTime + 0.5 + d);
@@ -94,7 +95,7 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 				UntunedInstrument.noiseBuffers[noteNumber] = buf;
 			}
 		}
-		audioGraph.on("noteon", (e: smf.NoteOnEvent) => {
+		audioGraph.on("noteon", (e: midi.NoteOnEvent) => {
 			var gain = this.audioContext.createGain();
 			gain.gain.value = 0.4;
 			gain.connect(this.gain);
@@ -132,7 +133,7 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 				audioGraph.data = { gain, oscillator };
 			}
 		});
-		audioGraph.on("noteoff", (e: smf.NoteOffEvent) => {
+		audioGraph.on("noteoff", (e: midi.NoteOffEvent) => {
 
 		});
 		audioGraph.on("destroy", () => {
@@ -204,11 +205,11 @@ document.addEventListener("DOMContentLoaded", (e) => {
 			midiPlayer = new player.Player(buffer);
 			midiPlayer.channels.forEach((channel, channelNumber) => {
 				// visualizer
-				channel.on("noteon", (e: smf.NoteOnEvent) => {
+				channel.on("noteon", (e: midi.NoteOnEvent) => {
 					canvasContext.fillStyle = "#dd2222";
 					canvasContext.fillRect(w * e.noteNumber + 1, h * channelNumber + 1, w - 2, h - 2);
 				});
-				channel.on("noteoff", (e: smf.NoteOffEvent | smf.NoteOnEvent) => {
+				channel.on("noteoff", (e: midi.NoteOffEvent | midi.NoteOnEvent) => {
 					if (blackKey[e.noteNumber % 12] == "1") {
 						canvasContext.fillStyle = "#aaaaaa";
 					} else {
@@ -225,13 +226,13 @@ document.addEventListener("DOMContentLoaded", (e) => {
 				}
 				let pool = new wasy.AudioGraphPool(16, inst);
 				pools.push(pool);
-				channel.on("noteon", (e: smf.NoteOnEvent) => {
+				channel.on("noteon", (e: midi.NoteOnEvent) => {
 					pool.noteOn(e);
 				});
-				channel.on("noteoff", (e: smf.NoteOffEvent) => {
+				channel.on("noteoff", (e: midi.NoteOffEvent) => {
 					pool.noteOff(e);
 				});
-				channel.on("pitch", (e: smf.PitchBendEvent) => {
+				channel.on("pitch", (e: midi.PitchBendEvent) => {
 					let map = pool.noteNumberGraphMap;
 					for (var key in map) {
 						let audioGraph = map[key];
@@ -266,7 +267,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 					52: "triangle",
 					82: "sawtooth",
 				};
-				channel.on("program", (e: smf.ProgramChangeEvent) => {
+				channel.on("program", (e: midi.ProgramChangeEvent) => {
 					if (inst instanceof Instrument) {
 						if (e.program in programMap) {
 							inst.oscillatorType = programMap[e.program];
@@ -275,7 +276,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 						}
 					}
 				});
-				channel.on("control", (e: smf.ControlChangeEvent) => {
+				channel.on("control", (e: midi.ControlChangeEvent) => {
 					if (inst instanceof Instrument) {
 						if (e.controller === 7) {
 							inst.volume = e.value;
