@@ -8,6 +8,12 @@ html(lang='ja')
   body
     h1 wasy
     form
+      input(type='radio', name='midiSource', value='file', checked='checked')
+      input#fileButton(type='file')
+      br
+      input(type='radio', name='midiSource' value='select')
+      select#fileSelector
+      br
       input#playButton(type='button', value='play')
     div
       canvas#keyboardCanvas(width=640, height=480)

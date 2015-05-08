@@ -22,6 +22,7 @@ class Instrument implements wasy.IAudioGraphGenerator {
 		this.gain.gain.value = 0.1;
 		this.gain.connect(this.panner);
 		this.oscillatorType = "square";
+		this.detuneValue = 0;
 	}
 	set panpot(panpot: number) {
 		var value = (panpot - 64) * Math.PI / (64 * 2);
@@ -34,15 +35,17 @@ class Instrument implements wasy.IAudioGraphGenerator {
 		let audioGraph = new wasy.AudioGraph();
 		audioGraph.on("noteon", (e: smf.NoteOnEvent) => {
 			let gain = this.audioContext.createGain();
-			gain.gain.value = e.velocity / 127;
 			gain.connect(this.gain);
 			let oscillator = this.audioContext.createOscillator();
 			oscillator.type = this.oscillatorType;
-			oscillator.detune.value = this.detuneValue;
 			oscillator.frequency.value = tuning.frequency(e.noteNumber);
 			let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
+			let now = accurateTimer.currentTime + 0.5 + d;
 			oscillator.connect(gain);
-			oscillator.start(accurateTimer.currentTime + 0.5 + d);
+			oscillator.start(now);
+			oscillator.detune.setValueAtTime(this.detuneValue, now);
+			gain.gain.setValueAtTime(e.velocity / 127, now);
+			gain.gain.linearRampToValueAtTime(0, now + 1);
 			audioGraph.data = { gain, oscillator };
 		});
 		audioGraph.on("noteoff", (e: smf.NoteOffEvent) => {
@@ -167,8 +170,21 @@ document.addEventListener("DOMContentLoaded", (e) => {
 			canvasContext.fillRect(w * j + 1, h * i + 1, w - 2, h - 2);
 		}
 	}
-	
-	let playButton = <HTMLInputElement> document.querySelector("#playButton");
+
+	let fileButton = <HTMLInputElement> document.querySelector("input#fileButton");
+	var userFile: ArrayBuffer;
+	fileButton.addEventListener("change", (e: Event) => {
+		let files = (<HTMLInputElement> e.target).files;
+		let file = files[0];
+		if (file == null) return;
+		let fileReader = new FileReader();
+		fileReader.onload = (e) => {
+			userFile = (<any> e.target).result;
+		};
+		fileReader.readAsArrayBuffer(file);
+	});
+
+	let playButton = <HTMLInputElement> document.querySelector("input#playButton");
 	let requesting: XMLHttpRequest;
 	let pools: wasy.AudioGraphPool[];
     playButton.addEventListener("click", (e) => {
@@ -179,113 +195,122 @@ document.addEventListener("DOMContentLoaded", (e) => {
 				pools.forEach(pool => pool.unregistAll());
 				playButton.value = "play";
 			} else {
-				midiPlayer.play();
+				midiPlayer.restart();
 				playButton.value = "pause";
 			}
 			return;
 		}
-		playButton.disabled = true;
-		let req = new XMLHttpRequest();
-		requesting = req;
-		req.open("GET", "./midi/test.mid", true);
-		req.responseType = "arraybuffer";
-		req.onload = (e) => {
-			playButton.value = "pause";
-			playButton.disabled = false;
-			requesting = null;
-			console.log(e);
-			var buffer = req.response;
-			if (buffer) {
-				midiPlayer = new player.Player(buffer);
-				midiPlayer.channels.forEach((channel, channelNumber) => {
-					// visualizer
-					channel.on("noteon", (e: smf.NoteOnEvent) => {
-						canvasContext.fillStyle = "#dd2222";
-						canvasContext.fillRect(w * e.noteNumber + 1, h * channelNumber + 1, w - 2, h - 2);
-					});
-					channel.on("noteoff", (e: smf.NoteOffEvent | smf.NoteOnEvent) => {
-						if (blackKey[e.noteNumber % 12] == "1") {
-							canvasContext.fillStyle = "#aaaaaa";
-						} else {
-							canvasContext.fillStyle = "#cccccc";
-						}
-						canvasContext.fillRect(w * e.noteNumber + 1, h * channelNumber + 1, w - 2, h - 2);
-					});
-					// audio
-					var inst: wasy.IAudioGraphGenerator;
-					if (channelNumber === 9) {
-						inst = new UntunedInstrument(audioContext, midiPlayer);
+		let playBuffer = (buffer: ArrayBuffer) => {
+			midiPlayer = new player.Player(buffer);
+			midiPlayer.channels.forEach((channel, channelNumber) => {
+				// visualizer
+				channel.on("noteon", (e: smf.NoteOnEvent) => {
+					canvasContext.fillStyle = "#dd2222";
+					canvasContext.fillRect(w * e.noteNumber + 1, h * channelNumber + 1, w - 2, h - 2);
+				});
+				channel.on("noteoff", (e: smf.NoteOffEvent | smf.NoteOnEvent) => {
+					if (blackKey[e.noteNumber % 12] == "1") {
+						canvasContext.fillStyle = "#aaaaaa";
 					} else {
-						inst = new Instrument(audioContext, midiPlayer);
+						canvasContext.fillStyle = "#cccccc";
 					}
-					let pool = new wasy.AudioGraphPool(16, inst);
-					pools.push(pool);
-					channel.on("noteon", (e: smf.NoteOnEvent) => {
-						pool.noteOn(e);
-					});
-					channel.on("noteoff", (e: smf.NoteOffEvent) => {
-						pool.noteOff(e);
-					});
-					channel.on("pitch", (e: smf.PitchBendEvent) => {
-						let map = pool.noteNumberGraphMap;
-						for (var key in map) {
-							let audioGraph = map[key];
-							if (audioGraph.data && audioGraph.data["oscillator"]) {
-								let oscillator: OscillatorNode = audioGraph.data["oscillator"];
-								oscillator.detune.value = e.value / 8192 * 200;
-							}
-						}
-						if (inst instanceof Instrument) {
-							inst.detuneValue = e.value / 8192 * 200;
-						}
-					});
-					const programMap = {
-						0: "sine",
-						1: "triangle",
-						2: "triangle",
-						3: "triangle",
-						4: "triangle",
-						5: "triangle",
-						17: "sine",
-						18: "sine",
-						19: "sine",
-						20: "sine",
-						21: "triangle",
-						30: "sawtooth",
-						31: "sawtooth",
-						49: "triangle",
-						50: "triangle",
-						51: "triangle",
-						52: "triangle",
-						82: "sawtooth",
-					};
-					channel.on("program", (e: smf.ProgramChangeEvent) => {
-						if (inst instanceof Instrument) {
-							if (e.program in programMap) {
-								inst.oscillatorType = programMap[e.program];
-							} else {
-								inst.oscillatorType = "square";
-							}
-						}
-					});
-					channel.on("control", (e: smf.ControlChangeEvent) => {
-						if (inst instanceof Instrument) {
-							if (e.controller === 7) {
-								inst.volume = e.value;
-							} else if (e.controller === 10) {
-								inst.panpot = e.value;
-							}
-						}
-					});
+					canvasContext.fillRect(w * e.noteNumber + 1, h * channelNumber + 1, w - 2, h - 2);
 				});
-				midiPlayer.timer.on("timing", (tick, oldTick) => {
-					accurateTimer.tick = tick;
-					accurateTimer.oldTick = oldTick;
-					accurateTimer.currentTime = audioContext.currentTime;
+				// audio
+				var inst: wasy.IAudioGraphGenerator;
+				if (channelNumber === 9) {
+					inst = new UntunedInstrument(audioContext, midiPlayer);
+				} else {
+					inst = new Instrument(audioContext, midiPlayer);
+				}
+				let pool = new wasy.AudioGraphPool(16, inst);
+				pools.push(pool);
+				channel.on("noteon", (e: smf.NoteOnEvent) => {
+					pool.noteOn(e);
 				});
-				midiPlayer.play();
-			}
-		};
-		req.send(null);
+				channel.on("noteoff", (e: smf.NoteOffEvent) => {
+					pool.noteOff(e);
+				});
+				channel.on("pitch", (e: smf.PitchBendEvent) => {
+					let map = pool.noteNumberGraphMap;
+					for (var key in map) {
+						let audioGraph = map[key];
+						if (audioGraph.data && audioGraph.data["oscillator"]) {
+							let oscillator: OscillatorNode = audioGraph.data["oscillator"];
+							let d = (e.tick - accurateTimer.oldTick) / midiPlayer.timer.ticksPerSecond;
+							let now = accurateTimer.currentTime + d;
+							oscillator.detune.setValueAtTime(e.value / 8192 * 200, now);
+						}
+					}
+					if (inst instanceof Instrument) {
+						inst.detuneValue = e.value / 8192 * 200;
+					}
+				});
+				const programMap = {
+					0: "sine",
+					1: "triangle",
+					2: "triangle",
+					3: "triangle",
+					4: "triangle",
+					5: "triangle",
+					17: "sine",
+					18: "sine",
+					19: "sine",
+					20: "sine",
+					21: "triangle",
+					30: "sawtooth",
+					31: "sawtooth",
+					49: "triangle",
+					50: "triangle",
+					51: "triangle",
+					52: "triangle",
+					82: "sawtooth",
+				};
+				channel.on("program", (e: smf.ProgramChangeEvent) => {
+					if (inst instanceof Instrument) {
+						if (e.program in programMap) {
+							inst.oscillatorType = programMap[e.program];
+						} else {
+							inst.oscillatorType = "square";
+						}
+					}
+				});
+				channel.on("control", (e: smf.ControlChangeEvent) => {
+					if (inst instanceof Instrument) {
+						if (e.controller === 7) {
+							inst.volume = e.value;
+						} else if (e.controller === 10) {
+							inst.panpot = e.value;
+						}
+					}
+				});
+			});
+			midiPlayer.timer.on("timing", (tick, oldTick) => {
+				accurateTimer.tick = tick;
+				accurateTimer.oldTick = oldTick;
+				accurateTimer.currentTime = audioContext.currentTime;
+			});
+			midiPlayer.play();
+		}
+		if (userFile != null) {
+			playBuffer(userFile);
+		} else {
+			playButton.disabled = true;
+			let req = new XMLHttpRequest();
+			requesting = req;
+			req.open("GET", "./midi/test.mid", true);
+			req.responseType = "arraybuffer";
+			req.onload = (e) => {
+				playButton.value = "pause";
+				playButton.disabled = false;
+				requesting = null;
+				console.log(e);
+				var buffer = req.response;
+				if (buffer) {
+					playBuffer(buffer);
+				}
+			};
+			req.send(null);
+		}
 	});
 });

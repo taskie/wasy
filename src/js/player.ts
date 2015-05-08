@@ -107,6 +107,9 @@ export class Player {
 	public pause() {
 		this.timer.pause();
 	}
+	public restart() {
+		this.timer.restart();
+	}
 	public read(tick: number) {
 		this.song.tracks.forEach((track, trackNumber) => {
 			for (var i = this.cursors[trackNumber]; i < track.events.length; ++i) {
