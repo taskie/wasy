@@ -2,7 +2,7 @@ import * as player from "./player";
 import * as midi from "./midi";
 import * as smf from "./smf";
 import * as wasy from "./wasy";
-import { EventEmitter } from "events";
+import EventEmitter from "eventemitter3";
 
 export var midiPlayer: player.Player;
 export var audioContext: AudioContext;
@@ -11,9 +11,11 @@ export let tuning = new wasy.EqualTemperamentTuning();
 export var accurateTimer = { tick: 0, oldTick: 0, currentTime: 0 };
 
 class Instrument implements wasy.IAudioGraphGenerator {
+	noiseBuffer: AudioBuffer;
     gain: GainNode;
 	panner: PannerNode;
 	oscillatorType: string;
+	program: number;
 	detuneValue: number;
 	constructor(public audioContext: AudioContext, public player: player.Player) {
 		this.panner = this.audioContext.createPanner();
@@ -33,34 +35,70 @@ class Instrument implements wasy.IAudioGraphGenerator {
 		this.gain.gain.value = volume / 127 * 0.1;
 	}
 	generateAudioGraph() {
+		if (this.noiseBuffer == null) {
+			var frame = 44100;
+			let buf = this.audioContext.createBuffer(2, frame, this.audioContext.sampleRate);
+			let data0 = buf.getChannelData(0);
+			let data1 = buf.getChannelData(1);
+			for (var i = 0; i < data0.length; ++i) {
+				data0[i] = (Math.random() * 2 - 1);
+				data1[i] = (Math.random() * 2 - 1);
+			}
+			this.noiseBuffer = buf;
+		}
 		let audioGraph = new wasy.AudioGraph();
 		audioGraph.on("noteon", (e: midi.NoteOnEvent) => {
 			let gain = this.audioContext.createGain();
 			gain.connect(this.gain);
-			let oscillator = this.audioContext.createOscillator();
-			oscillator.type = this.oscillatorType;
-			oscillator.frequency.value = tuning.frequency(e.noteNumber);
-			let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
-			let now = accurateTimer.currentTime + 0.5 + d;
-			oscillator.connect(gain);
-			oscillator.start(now);
-			oscillator.detune.setValueAtTime(this.detuneValue, now);
-			gain.gain.setValueAtTime(e.velocity / 127, now);
-			gain.gain.linearRampToValueAtTime(0, now + 1);
-			audioGraph.data = { gain, oscillator };
+			if (this.program === 0x77 || this.program === 0x7E) {
+				var filter = this.audioContext.createBiquadFilter();
+				filter.type = "bandpass";
+				filter.frequency.value = tuning.frequency(e.noteNumber + 12);
+				filter.Q.value = 1;
+				filter.connect(gain);
+				var source = this.audioContext.createBufferSource();
+				source.buffer = this.noiseBuffer;
+				source.connect(filter);
+				let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
+				let now = accurateTimer.currentTime + 0.5 + d;
+				if (this.program === 0x77) {
+					gain.gain.setValueAtTime(0, now);
+					gain.gain.linearRampToValueAtTime(e.velocity / 127, now + 1);
+				} else {
+					gain.gain.setValueAtTime(e.velocity / 127, now);
+				}
+				source.start(accurateTimer.currentTime + 0.5 + d);
+				audioGraph.data = { gain, filter, source };
+			} else {
+				let oscillator = this.audioContext.createOscillator();
+				oscillator.type = this.oscillatorType;
+				oscillator.frequency.value = tuning.frequency(e.noteNumber);
+				let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
+				let now = accurateTimer.currentTime + 0.5 + d;
+				oscillator.connect(gain);
+				oscillator.start(now);
+				oscillator.detune.setValueAtTime(this.detuneValue, now);
+				gain.gain.setValueAtTime(e.velocity / 127, now);
+				if (this.program <= 0x05) {
+					gain.gain.setValueAtTime(e.velocity / 127, now + 0.1);
+					gain.gain.linearRampToValueAtTime(e.velocity / 127 * 0.2, now + 0.6);
+				}
+				audioGraph.data = { gain, oscillator };
+			}
 		});
 		audioGraph.on("noteoff", (e: midi.NoteOffEvent) => {
-			let {gain, oscillator} = audioGraph.data;
 			let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
-			oscillator.stop(accurateTimer.currentTime + 0.5 + d);
+			if (audioGraph.data["source"]) audioGraph.data["source"].stop(accurateTimer.currentTime + 0.5 + d);
+			if (audioGraph.data["oscillator"]) audioGraph.data["oscillator"].stop(accurateTimer.currentTime + 0.5 + d);
 		});
 		audioGraph.on("destroy", () => {
-			let {gain, oscillator} = audioGraph.data;
-			oscillator.stop(accurateTimer.currentTime + 0.5);
 			setTimeout(() => {
-				gain.disconnect();
-				oscillator.disconnect();
+				for (var key in audioGraph.data) {
+					audioGraph.data[key].disconnect();
+				}
 			}, 1000);
+			if (audioGraph.data["source"]) audioGraph.data["source"].stop(accurateTimer.currentTime + 0.5);
+			if (audioGraph.data["oscillator"]) audioGraph.data["oscillator"].stop(accurateTimer.currentTime + 0.5);
 		});
 		return audioGraph;
 	}
@@ -96,10 +134,17 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 			}
 		}
 		audioGraph.on("noteon", (e: midi.NoteOnEvent) => {
-			var gain = this.audioContext.createGain();
-			gain.gain.value = 0.4;
-			gain.connect(this.gain);
 			if (e.noteNumber in UntunedInstrument.noiseBuffers) {
+				var gain = this.audioContext.createGain();
+				gain.gain.value = 0.3;
+				let panner = this.audioContext.createPanner();
+				gain.connect(panner);
+				var panpotValue = 0;
+				if (42 <= e.noteNumber && e.noteNumber <= 46) {
+					panpotValue = (32 - 64) * Math.PI / (64 * 2);
+				}
+				panner.setPosition(Math.sin(panpotValue), 0, -Math.cos(panpotValue));
+				panner.connect(this.gain);
 				var filter = this.audioContext.createBiquadFilter();
 				filter.type = "bandpass";
 				if (42 <= e.noteNumber && e.noteNumber <= 51) {
@@ -114,7 +159,7 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 				source.connect(filter);
 				let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
 				source.start(accurateTimer.currentTime + 0.5 + d);
-				audioGraph.data = { gain, filter, source };
+				audioGraph.data = { panner, gain, filter, source };
 			} else {
 				let gain = this.audioContext.createGain();
 				gain.connect(this.gain);
@@ -123,7 +168,7 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 				oscillator.detune.value = Math.random() * 10 - 5;
 				let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
 				let now = accurateTimer.currentTime + 0.5 + d;
-				gain.gain.setValueAtTime(e.velocity / 127 * 0.15, now);
+				gain.gain.setValueAtTime(e.velocity / 127 * 0.12, now);
 				gain.gain.linearRampToValueAtTime(0, now + 0.3);
 				oscillator.frequency.setValueAtTime(tuning.frequency(e.noteNumber + 24), now);
 				oscillator.frequency.linearRampToValueAtTime(50, now + 0.2);
@@ -156,8 +201,8 @@ document.addEventListener("DOMContentLoaded", (e) => {
 	let canvas = <HTMLCanvasElement> document.querySelector("canvas#keyboardCanvas");
 	canvasContext = <CanvasRenderingContext2D> canvas.getContext("2d");
 
-	const w = 640 / 128;
-	const h = 480 / 16;
+	const w = 2; // 640 / 128 - 3;
+	const h = 15; // 480 / 16 / 2;
     const blackKey = "010100101010";
 	canvasContext.fillStyle = "#eeeeee";
 	canvasContext.fillRect(0, 0, 640, 480);
@@ -168,7 +213,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 			} else {
 				canvasContext.fillStyle = "#cccccc";
 			}
-			canvasContext.fillRect(w * j + 1, h * i + 1, w - 2, h - 2);
+			canvasContext.fillRect(128 * 3 + w * j - 1, h * i + 1, w, h - 2);
 		}
 	}
 
@@ -207,7 +252,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 				// visualizer
 				channel.on("noteon", (e: midi.NoteOnEvent) => {
 					canvasContext.fillStyle = "#dd2222";
-					canvasContext.fillRect(w * e.noteNumber + 1, h * channelNumber + 1, w - 2, h - 2);
+					canvasContext.fillRect(128 * 3 + w * e.noteNumber - 1, h * channelNumber + 1, w, h - 2);
 				});
 				channel.on("noteoff", (e: midi.NoteOffEvent | midi.NoteOnEvent) => {
 					if (blackKey[e.noteNumber % 12] == "1") {
@@ -215,7 +260,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 					} else {
 						canvasContext.fillStyle = "#cccccc";
 					}
-					canvasContext.fillRect(w * e.noteNumber + 1, h * channelNumber + 1, w - 2, h - 2);
+					canvasContext.fillRect(128 * 3 + w * e.noteNumber - 1, h * channelNumber + 1, w, h - 2);
 				});
 				// audio
 				var inst: wasy.IAudioGraphGenerator;
@@ -248,27 +293,32 @@ document.addEventListener("DOMContentLoaded", (e) => {
 					}
 				});
 				const programMap = {
-					0: "sine",
-					1: "triangle",
-					2: "triangle",
-					3: "triangle",
-					4: "triangle",
-					5: "triangle",
-					17: "sine",
-					18: "sine",
-					19: "sine",
-					20: "sine",
-					21: "triangle",
-					30: "sawtooth",
-					31: "sawtooth",
-					49: "triangle",
-					50: "triangle",
-					51: "triangle",
-					52: "triangle",
-					82: "sawtooth",
+					0x00: "sine",
+					0x01: "triangle",
+					0x02: "triangle",
+					0x03: "triangle",
+					0x04: "triangle",
+					0x05: "triangle",
+
+					0x10: "sine",
+					0x11: "sine",
+					0x12: "sine",
+					0x13: "sine",
+					0x14: "triangle",
+
+					0x1D: "sawtooth",
+					0x1E: "sawtooth",
+
+					0x30: "triangle",
+					0x31: "triangle",
+					0x32: "triangle",
+					0x33: "triangle",
+
+					0x51: "sawtooth",
 				};
 				channel.on("program", (e: midi.ProgramChangeEvent) => {
 					if (inst instanceof Instrument) {
+						inst.program = e.program;
 						if (e.program in programMap) {
 							inst.oscillatorType = programMap[e.program];
 						} else {

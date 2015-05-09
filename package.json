@@ -36,14 +36,13 @@
   "main": "build/main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/taskie/my-gulp-skel.git"
+    "url": "https://github.com/taskie/wasy.git"
   },
   "bugs": {
-    "url": "https://github.com/taskie/my-gulp-skel/issues"
+    "url": "https://github.com/taskie/wasy/issues"
   },
-  "homepage": "https://github.com/taskie/my-gulp-skel",
+  "homepage": "https://github.com/taskie/wasy",
   "dependencies": {
-    "eventemitter2": "^0.4.14",
-    "events": "^1.0.2"
+    "eventemitter3": "^1.0.2"
   }
 }

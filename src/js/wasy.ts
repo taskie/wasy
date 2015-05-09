@@ -1,6 +1,6 @@
 import * as midi from "./midi";
 import * as smf from "./smf";
-import { EventEmitter } from "events";
+import EventEmitter from "eventemitter3";
 
 new EventEmitter();
 
