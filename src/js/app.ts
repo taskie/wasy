@@ -88,6 +88,12 @@ class Instrument implements wasy.IAudioGraphGenerator {
 		});
 		audioGraph.on("noteoff", (e: midi.NoteOffEvent) => {
 			let d = (e.tick - accurateTimer.oldTick) / this.player.timer.ticksPerSecond;
+			let now = accurateTimer.currentTime + 0.5 + d;
+			if (audioGraph.data["gain"]) { 
+				let gain: GainNode = audioGraph.data["gain"];
+				gain.gain.cancelScheduledValues(0);
+				gain.gain.setValueAtTime(0, now);
+			}
 			if (audioGraph.data["source"]) audioGraph.data["source"].stop(accurateTimer.currentTime + 0.5 + d);
 			if (audioGraph.data["oscillator"]) audioGraph.data["oscillator"].stop(accurateTimer.currentTime + 0.5 + d);
 		});
@@ -136,7 +142,7 @@ class UntunedInstrument implements wasy.IAudioGraphGenerator {
 		audioGraph.on("noteon", (e: midi.NoteOnEvent) => {
 			if (e.noteNumber in UntunedInstrument.noiseBuffers) {
 				var gain = this.audioContext.createGain();
-				gain.gain.value = 0.3;
+				gain.gain.value = 0.3 * e.velocity / 127;
 				let panner = this.audioContext.createPanner();
 				gain.connect(panner);
 				var panpotValue = 0;
@@ -201,8 +207,8 @@ document.addEventListener("DOMContentLoaded", (e) => {
 	let canvas = <HTMLCanvasElement> document.querySelector("canvas#keyboardCanvas");
 	canvasContext = <CanvasRenderingContext2D> canvas.getContext("2d");
 
-	const w = 2; // 640 / 128 - 3;
-	const h = 15; // 480 / 16 / 2;
+	const w = 5; // 640 / 128 - 3;
+	const h = 30; // 480 / 16 / 2;
     const blackKey = "010100101010";
 	canvasContext.fillStyle = "#eeeeee";
 	canvasContext.fillRect(0, 0, 640, 480);
@@ -213,7 +219,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 			} else {
 				canvasContext.fillStyle = "#cccccc";
 			}
-			canvasContext.fillRect(128 * 3 + w * j - 1, h * i + 1, w, h - 2);
+			canvasContext.fillRect(w * j, h * i + 1, w, h - 2);
 		}
 	}
 
@@ -252,15 +258,15 @@ document.addEventListener("DOMContentLoaded", (e) => {
 				// visualizer
 				channel.on("noteon", (e: midi.NoteOnEvent) => {
 					canvasContext.fillStyle = "#dd2222";
-					canvasContext.fillRect(128 * 3 + w * e.noteNumber - 1, h * channelNumber + 1, w, h - 2);
+					canvasContext.fillRect(w * e.noteNumber, h * channelNumber + 1, w, h - 2);
 				});
-				channel.on("noteoff", (e: midi.NoteOffEvent | midi.NoteOnEvent) => {
+				channel.on("noteoff", (e: midi.NoteOffEvent) => {
 					if (blackKey[e.noteNumber % 12] == "1") {
 						canvasContext.fillStyle = "#aaaaaa";
 					} else {
 						canvasContext.fillStyle = "#cccccc";
 					}
-					canvasContext.fillRect(128 * 3 + w * e.noteNumber - 1, h * channelNumber + 1, w, h - 2);
+					canvasContext.fillRect(w * e.noteNumber, h * channelNumber + 1, w, h - 2);
 				});
 				// audio
 				var inst: wasy.IAudioGraphGenerator;

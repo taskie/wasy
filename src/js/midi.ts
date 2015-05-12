@@ -9,12 +9,12 @@ export class Event {
 		}
 		return "midi," + data.map((x) => x.toString(16)).join(",");
 	}
-	static statusEventMap: { [n: number]: typeof Event};
+	static statusEventMap: { [n: number]: typeof Event };
 	static create(dataView: DataView, tick: number, status: number): Event {
 		if (!this.statusEventMap) {
 			this.statusEventMap = {
-				0x80: NoteOnEvent,
-				0x90: NoteOffEvent,
+				0x80: NoteOffEvent,
+				0x90: NoteOnEvent,
 				0xA0: PolyphonicKeyPressureEvent,
 				0xB0: ControlChangeEvent,
 				0xC0: ProgramChangeEvent,
@@ -27,6 +27,8 @@ export class Event {
 		let statusType = status & 0xF0;
 		if (status === 0xFF) {
 			return MetaEvent.create(dataView, tick, status);
+		} else if (status === 0x90 && dataView.getUint8(1) === 0) {
+			return new NoteOffEvent(dataView, tick, 0x80);	
 		} else {
 			let EventClass: typeof Event = this.statusEventMap[statusType];
 			return new EventClass(dataView, tick, status);
@@ -50,18 +52,18 @@ export class ControlChangeEvent extends Event {
 	get value() { return this.dataView.getUint8(1); }
 }
 export class ProgramChangeEvent extends Event {
-	get program() { return this.dataView.getUint8(0); }	
+	get program() { return this.dataView.getUint8(0); }
 }
 export class ChannelPressureEvent extends Event { }
 export class PitchBendEvent extends Event {
 	get value() {
-		return this.dataView.getUint8(0) + (this.dataView.getUint8(1) << 7) - 8192; 
+		return this.dataView.getUint8(0) + (this.dataView.getUint8(1) << 7) - 8192;
 	}
 }
 export class SystemExclusiveEvent extends Event { }
 
 export class MetaEvent extends Event {
-	static typeIndexEventMap: { [n: number]: typeof MetaEvent};
+	static typeIndexEventMap: { [n: number]: typeof MetaEvent };
 	static create(dataView: DataView, tick: number, status: number): MetaEvent {
 		if (!this.typeIndexEventMap) {
 			this.typeIndexEventMap = {

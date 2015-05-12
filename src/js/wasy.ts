@@ -27,16 +27,16 @@ export class EqualTemperamentTuning implements ITuning {
 }
 
 export class AudioGraph extends EventEmitter {
-    data: {[key: string]: any};
-    
+    data: { [key: string]: any };
+
     destroy() {
         this.emit("destroy", this);
     }
-    
+
     noteOn(event: midi.NoteOnEvent) {
         this.emit("noteon", event, this);
     }
-    
+
     noteOff(event: midi.NoteOffEvent) {
         this.emit("noteoff", event, this);
     }
@@ -54,7 +54,7 @@ export class AudioGraphPool {
         this._audioGraphStore = {};
         this._noteNumberQueue = [];
     }
-    
+
     noteOn(event: midi.NoteOnEvent) {
         let audioGraph = this.audioGraphGenerator.generateAudioGraph();
         this._regist(event.noteNumber, audioGraph);
@@ -73,7 +73,7 @@ export class AudioGraphPool {
             delete this._audioGraphStore[oldNoteNumber];
         }
     }
-    
+
     noteOff(event: midi.NoteOffEvent) {
         let audioGraph = this.find(event.noteNumber);
         if (audioGraph == null) return;
