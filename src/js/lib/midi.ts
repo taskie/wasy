@@ -34,35 +34,45 @@ export class Event {
 			return new EventClass(dataView, tick, status);
 		}
 	}
+	get statusType() { return this.status & 0xF0; }
 }
 
-export class NoteOffEvent extends Event {
+export class ChannelEvent extends Event {
+	get channel() { return this.status & 0x0F; }
+}
+
+export class NoteOffEvent extends ChannelEvent {
 	get noteNumber() { return this.dataView.getUint8(0); }
 	get velocity() { return this.dataView.getUint8(1); }
 }
 
-export class NoteOnEvent extends Event {
+export class NoteOnEvent extends ChannelEvent {
 	get noteNumber() { return this.dataView.getUint8(0); }
 	get velocity() { return this.dataView.getUint8(1); }
 }
 
-export class PolyphonicKeyPressureEvent extends Event { }
-export class ControlChangeEvent extends Event {
+export class PolyphonicKeyPressureEvent extends ChannelEvent { }
+export class ControlChangeEvent extends ChannelEvent {
 	get controller() { return this.dataView.getUint8(0); }
 	get value() { return this.dataView.getUint8(1); }
 }
-export class ProgramChangeEvent extends Event {
+export class ProgramChangeEvent extends ChannelEvent {
 	get program() { return this.dataView.getUint8(0); }
 }
-export class ChannelPressureEvent extends Event { }
-export class PitchBendEvent extends Event {
+export class ChannelPressureEvent extends ChannelEvent { }
+export class PitchBendEvent extends ChannelEvent {
 	get value() {
 		return this.dataView.getUint8(0) + (this.dataView.getUint8(1) << 7) - 8192;
 	}
 }
-export class SystemExclusiveEvent extends Event { }
 
-export class MetaEvent extends Event {
+export class FxEvent extends Event {
+	get statusType() { return this.status; }
+}
+
+export class SystemExclusiveEvent extends FxEvent { }
+
+export class MetaEvent extends FxEvent {
 	static typeIndexEventMap: { [n: number]: typeof MetaEvent };
 	static create(dataView: DataView, tick: number, status: number): MetaEvent {
 		if (!this.typeIndexEventMap) {

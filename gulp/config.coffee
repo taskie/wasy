@@ -50,9 +50,13 @@ config =
         src: tmp + 'js/**/!(_)*.js'
         dest: dest
         options:
-            entry: tmp + 'js/app.js'
+            entry:
+                main:
+                    tmp + 'js/app.js'
+                'player-worker':
+                    tmp + 'js/player-worker.js'
             output:
-                filename: 'main.js'
+                filename: '[name].js'
             resolve:
                 extensions: ['', '.js']
             devtool: 'source-map'

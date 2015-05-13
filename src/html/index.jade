@@ -7,13 +7,14 @@ html(lang='ja')
     script(type='text/javascript', src='./main.js')
   body
     h1 wasy example
-    form
-      input(type='radio', name='midiSource', value='file', checked='checked')
-      input#fileButton(type='file')
-      br
-      input(type='radio', name='midiSource' value='select')
-      select#fileSelector
-      br
-      input#playButton(type='button', value='play')
-    div
+    div.partition
+      form
+        input#userFileRadio(type='radio', name='midiSource', value='userFile', checked='checked')
+        input#fileButton(type='file')
+        br
+        input#serverFileRadio(type='radio', name='midiSource' value='serverFile')
+        select#fileSelector
+        br
+        input#playButton(type='button', value='play')
+    div.partition
       canvas#keyboardCanvas(width=640, height=480)
