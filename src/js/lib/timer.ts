@@ -35,7 +35,8 @@ export class Timer {
 		this.currentTime = this.audioContext.currentTime;
 		this.oldTick = 0;
 		this.tick = 0;
-		setInterval(this.timing.bind(this), this.durationInSeconds * 1000);
+		this.invalidate();
+		this.timerId = setInterval(this.timing.bind(this), this.durationInSeconds * 1000);
 	}
 	onTiming(listener: (timeStamp: TimeStamp) => void) {
 		this._emitter.on(listener);
@@ -58,10 +59,14 @@ export class Timer {
 		timeStamp.ticksPerSecond = this.ticksPerSecond;	
 		return timeStamp;
 	}
-	pause() {
-		clearInterval(this.timerId);
+	invalidate() {
+		if (this.timerId != null) {
+			clearInterval(this.timerId);
+		}
+		this.timerId = null;
 	}
-	restart() {
-		setInterval(this.timing.bind(this), this.durationInSeconds * 1000);
+	resume() {
+		this.invalidate();
+		this.timerId = setInterval(this.timing.bind(this), this.durationInSeconds * 1000);
 	}
 }

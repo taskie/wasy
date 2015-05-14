@@ -106,7 +106,7 @@ class AnalyserView {
 
 interface Song {
 	name: string
-	artist: string
+	artist?: string
 	file: string
 }
 
@@ -132,6 +132,9 @@ class Application {
 		this.audioContext = this.getAudioContext();
 
 		let canvas = <HTMLCanvasElement> document.querySelector("canvas#keyboardCanvas");
+		canvas.ondragover = e => e.preventDefault();
+		canvas.addEventListener("drop", this.canvasDropListener.bind(this));
+		
 		this.canvasContext = <CanvasRenderingContext2D> canvas.getContext("2d");
 		this.keyboardView = new KeyboardView(this.canvasContext);
 		this.analyserView = new AnalyserView(this.canvasContext);
@@ -147,7 +150,10 @@ class Application {
 		fileButton.addEventListener("change", this.fileChangeListener.bind(this));
 		let playButton = <HTMLInputElement> document.querySelector("input#playButton");
 		playButton.addEventListener("click", this.playListener.bind(this));
+		let pauseButton = <HTMLInputElement> document.querySelector("input#pauseButton");
+		pauseButton.addEventListener("click", this.pauseListener.bind(this));
 		let fileSelector = <HTMLInputElement> document.querySelector("select#fileSelector");
+		fileSelector.addEventListener("change", this.fileSelectListener.bind(this));
 
 		let lastComponent = location.href.split("/").pop();
 		if (lastComponent[0] === "?") {
@@ -163,7 +169,9 @@ class Application {
 			this.songs = JSON.parse(json);
 			for (let song of this.songs) {
 				let option = document.createElement("option");
-				option.innerHTML = `${song.name} （${song.artist}）`;
+				let value = `${song.name} （${song.artist}）`;
+				if (song.artist == null) value = song.name;
+				option.innerHTML = value;
 				fileSelector.appendChild(option);
 			}
 		}
@@ -174,12 +182,32 @@ class Application {
 	fileChangeListener(e: Event) {
 		let files = (<HTMLInputElement> e.target).files;
 		let file = files[0];
+		this.setUserFile(file);
+	}
+
+	canvasDropListener(e: Event) {
+		let files: FileList = (<any>e).dataTransfer.files;
+		let fileButton = <HTMLInputElement> document.querySelector("input#fileButton");
+		fileButton.files = files;
+		let file = files[0];
+		this.setUserFile(file);
+		return e.preventDefault();
+	}
+
+	setUserFile(file: File) {
 		if (file == null) return;
 		let fileReader = new FileReader();
 		fileReader.onload = (e) => {
 			this.userFile = (<any> e.target).result;
+			let userFileRadio = <HTMLInputElement> document.querySelector("input#userFileRadio");
+			userFileRadio.checked = true;
 		};
 		fileReader.readAsArrayBuffer(file);
+	}
+
+	fileSelectListener(e: Event) {
+		let serverFileRadio = <HTMLInputElement> document.querySelector("input#serverFileRadio");
+		serverFileRadio.checked = true;
 	}
 
 	playListener(e: Event) {
@@ -188,7 +216,7 @@ class Application {
 
 		let midiSource = <HTMLInputElement> document.querySelector("input[name=midiSource]:checked");
 		if (midiSource.value == "userFile") {
-			if (this.userFile) {
+			if (this.userFile != null) {
 				this.playWithBuffer(this.userFile);
 			}
 		} else {
@@ -203,6 +231,17 @@ class Application {
 				}
 			}
 			xhr.send();
+		}
+	}
+	
+	pauseListener(e: Event) {
+		let button = <HTMLInputElement> e.target;
+		if (this.wasy.paused) {
+			this.wasy.resume();
+			button.value = "pause";
+		} else {
+			this.wasy.pause();
+			button.value = "resume";
 		}
 	}
 	

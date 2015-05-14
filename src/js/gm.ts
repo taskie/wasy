@@ -279,6 +279,10 @@ export class Instrument<T> {
   panpot: number;      // 10
   expression: number;  // 11
   pitchBend: number;
+  pitchBendRange: number;
+
+  dataEntry: number;
+  rpn: number;
 
   constructor(public audioContext: AudioContext, public destination: AudioNode) {
     this.notePool = new NotePool<T>();
@@ -291,33 +295,44 @@ export class Instrument<T> {
     this.source = this._panner;
     this._panner.connect(this._gain);
     this._gain.connect(destination);
-
+    
+    this.resetAllControl();
+  }
+  resetAllControl() {
     this.volume = 100;
     this.panpot = 64;
     this.expression = 127;
     this.pitchBend = 0;
+    this.pitchBendRange = 2;
+    
+    this.dataEntry = 0;
+    this.rpn = 0;
   }
   destroy() {
     this.notePool.unregisterAll();
     this._expiredEmitter.offAll();
     this._programChangeEmitter.offAll();
   }
+  pause() {
+    this.notePool.unregisterAll();
+  }
   setPanpot(panpot: number) {
+    this.panpot = panpot;
     var value = (panpot - 64) * Math.PI / (64 * 2);
     this._panner.setPosition(Math.sin(value), 0, -Math.cos(value));
-    this.panpot = panpot;
   }
   setVolume(volume: number, time: number) {
-    this._gain.gain.setValueAtTime(volume / 127 * this.expression / 127, time);
     this.volume = volume;
+    this._gain.gain.cancelScheduledValues(time);
+    this._gain.gain.setValueAtTime(volume / 127 * this.expression / 127, time);
   }
   setExpression(expression: number, time: number) {
-    this._gain.gain.setValueAtTime(this.volume / 127 * expression / 127, time);
     this.expression = expression;
+    this._gain.gain.cancelScheduledValues(time);
+    this._gain.gain.setValueAtTime(this.volume / 127 * expression / 127, time);
   }
-  get detuneRange() { return 2; }
-  set detune(detune: number) { this.pitchBend = detune / 100 / this.detuneRange * 8192; }
-  get detune() { return this.pitchBend / 8192 * this.detuneRange * 100; }
+  set detune(detune: number) { this.pitchBend = detune / 100 / this.pitchBendRange * 8192; }
+  get detune() { return this.pitchBend / 8192 * this.pitchBendRange * 100; }
   registerNote(noteNumber: number, data: T, time: number) {
     this.notePool.register(noteNumber, data, time);
   }
@@ -348,14 +363,37 @@ export class Instrument<T> {
   receiveEvent(event: midi.Event, time: number) {
     if (event instanceof midi.ControlChangeEvent) {
       switch (event.controller) {
-        case 7:
+        case 7:   // Volume
           this.setVolume(event.value, time);
           break;
-        case 10:
+        case 10:  // Panpot
           this.setPanpot(event.value);
           break;
-        case 11:
+        case 11:  // Expression
           this.setExpression(event.value, time);
+          break;
+        case 6:   // DataEntryMSB
+          this.dataEntry &= 0b11111110000000;
+          this.dataEntry |= event.value;
+          this.receiveRPN(this.rpn, this.dataEntry, time);
+          break;
+        case 38:  // DataEntryLSB
+          this.dataEntry &= 0b00000001111111;
+          this.dataEntry |= event.value << 7;
+          break;
+        case 100: // RPN LSB
+          this.rpn &= 0b11111110000000;
+          this.rpn |= event.value;
+          break;
+        case 101: // RPN MSB
+          this.rpn &= 0b00000001111111;
+          this.rpn |= event.value << 7;
+          break;
+        case 120: // AllSoundOff
+          this.notePool.unregisterAll();
+          break;
+        case 121: // ResetAllControl
+          this.resetAllControl();
           break;
         default:
           if (this.patch) {
@@ -369,6 +407,15 @@ export class Instrument<T> {
       if (this.patch) {
         this.patch.receiveEvent(event, time);
       }
+    }
+  }
+  receiveRPN(rpn: number, data: number, time: number) {
+    switch (rpn) {
+      case 0: // pitch bend range
+        this.pitchBendRange = data;
+        break;
+      default:
+        break;
     }
   }
 }

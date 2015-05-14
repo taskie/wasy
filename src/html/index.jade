@@ -16,5 +16,15 @@ html(lang='ja')
         select#fileSelector
         br
         input#playButton(type='button', value='play')
+        input#pauseButton(type='button', value='pause')
     div.partition
       canvas#keyboardCanvas(width=640, height=480)
+    h2 対応状況
+    ul
+      li General MIDI
+        ul
+          li volume, panpot, expression
+          li pitch bend, pitch bend range
+          li all sound off, reset all control
+      li Web MIDI API
+      li WebMidiLink

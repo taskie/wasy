@@ -15,7 +15,7 @@ export class Patch<T extends Monophony> implements gm.Patch<T> {
 	tuning: tuning.Tuning;
 	constructor(
 		public instrument: gm.Instrument<Monophony>,
-		public destination: AudioNode = instrument.destination) {
+		public destination: AudioNode = instrument.source) {
 		this.tuning = new tuning.EqualTemperamentTuning();
 	}
 	get detune() { return this.instrument.detune; }
@@ -59,7 +59,7 @@ export class Patch<T extends Monophony> implements gm.Patch<T> {
 		if (monophony.detunableNodes != null) {
 			for (let node of monophony.detunableNodes) {
 				let oscillator = <OscillatorNode> node;
-				this.detune = event.value / 8192 * 200;
+				this.instrument.pitchBend = event.value;
 				oscillator.detune.setValueAtTime(this.detune, time);
 			}
 		}
@@ -76,7 +76,7 @@ export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
 	constructor(
 		instrument: gm.Instrument<Monophony>,
 		public oscillatorType: string = "square",
-		destination: AudioNode = instrument.destination) {
+		destination?: AudioNode) {
 		super(instrument, destination);
 	}
 	onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
@@ -123,7 +123,7 @@ export class NoiseMonophony extends Monophony {
 
 export class NoisePatch extends Patch<NoiseMonophony> {
 	static noiseBuffer: AudioBuffer;
-	constructor(instrument: gm.Instrument<Monophony>, destination: AudioNode = instrument.destination) {
+	constructor(instrument: gm.Instrument<Monophony>, destination?: AudioNode) {
 		super(instrument, destination);
 		if (NoisePatch.noiseBuffer == null) {
 			var frame = 44100 * 2;
@@ -185,7 +185,7 @@ export class GainedNoisePatch extends NoisePatch {
 		public valueAtEnd: number,
 		public duration: number,
 		public fixedFrequency?: number,
-		destination: AudioNode = instrument.destination) {
+		destination?: AudioNode) {
 		super(instrument, destination);
 	}
 
@@ -225,7 +225,7 @@ export class GainedOscillatorPatch extends SimpleOscillatorPatch {
 		public valueAtEnd: number,
 		public duration: number,
 		oscillatorType?: string,
-		destination: AudioNode = instrument.destination) {
+		destination?: AudioNode) {
 		super(instrument, oscillatorType, destination);
 	}
 
@@ -245,7 +245,7 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 		duration: number,
 		public fixedFrequency?: number,
 		oscillatorType?: string,
-		destination: AudioNode = instrument.destination) {
+		destination?: AudioNode) {
 		super(instrument, 1, 0, duration, oscillatorType, destination);
 	}
 
@@ -291,7 +291,7 @@ export class DrumKitPatch extends Patch<Monophony> {
 		// gain
 		let ga = this.audioContext.createGain();
 		this.gain = ga;
-		this.gain.gain.value = 3;
+		this.gain.gain.value = 2;
 		ga.connect(ds);
 		// panner
 		let lp = this.audioContext.createPanner();
@@ -307,23 +307,23 @@ export class DrumKitPatch extends Patch<Monophony> {
 		// assign
 		this.patchMap = {
 			0: new OneShotNoisePatch(is, 1, 0, 0.05, null, ga), // default
-			35: new OneShotOscillatorPatch(is, 0.3, 150, "sine", ga), // Bass Drum 2
-			36: new OneShotOscillatorPatch(is, 0.3, 180, "square", ga), // Bass Drum 1
-			37: new OneShotNoisePatch(is, 1, 0, 0.2, 1800, ga), // Side Stick
-			38: new OneShotNoisePatch(is, 1, 0, 0.3, 1200, ga), // Snare Drum 1
-			39: new OneShotNoisePatch(is, 1, 0, 0.4, 2000, ga), // Hand Clap
+			35: new OneShotOscillatorPatch(is, 0.2, 140, "sine", ga), // Bass Drum 2
+			36: new OneShotOscillatorPatch(is, 0.2, 150, "square", ga), // Bass Drum 1
+			37: new OneShotNoisePatch(is, 1, 0, 0.1, 2000, ga), // Side Stick
+			38: new OneShotNoisePatch(is, 1, 0, 0.3, 1000, ga), // Snare Drum 1
+			39: new OneShotNoisePatch(is, 1, 0, 0.4, 3000, ga), // Hand Clap
 			40: new OneShotNoisePatch(is, 1, 0, 0.5, 1500, ga), // Snare Drum 2
-			41: new OneShotOscillatorPatch(is, 0.3, 300, "sine", rp), // Low Tom 2
-			42: new OneShotNoisePatch(is, 1, 0, 0.1, 4000, lp), // Closed Hi-hat
-			43: new OneShotOscillatorPatch(is, 0.3, 350, "sine", rp), // Low Tom 1
-			44: new OneShotNoisePatch(is, 1, 0, 0.1, 3500, lp), // Pedal Hi-hat
-			45: new OneShotOscillatorPatch(is, 0.3, 400, "sine", rp), // Mid Tom 2
-			46: new OneShotNoisePatch(is, 1, 0, 0.3, 4000, lp), // Open Hi-hat
-			47: new OneShotOscillatorPatch(is, 0.3, 450, "sine", rp), // Mid Tom 1
+			41: new OneShotOscillatorPatch(is, 0.3, 200, "sine", rp), // Low Tom 2
+			42: new OneShotNoisePatch(is, 1, 0, 0.1, 6000, lp), // Closed Hi-hat
+			43: new OneShotOscillatorPatch(is, 0.3, 250, "sine", rp), // Low Tom 1
+			44: new OneShotNoisePatch(is, 1, 0, 0.1, 5000, lp), // Pedal Hi-hat
+			45: new OneShotOscillatorPatch(is, 0.3, 350, "sine", rp), // Mid Tom 2
+			46: new OneShotNoisePatch(is, 1, 0, 0.3, 6000, lp), // Open Hi-hat
+			47: new OneShotOscillatorPatch(is, 0.3, 400, "sine", rp), // Mid Tom 1
 			48: new OneShotOscillatorPatch(is, 0.3, 500, "sine", rp), // High Tom 2
-			49: new OneShotNoisePatch(is, 1, 0, 1.5, 6000, ga), // Crash Cymbal 1
+			49: new OneShotNoisePatch(is, 1, 0, 1.5, 8000, ga), // Crash Cymbal 1
 			50: new OneShotOscillatorPatch(is, 0.3, 550, "sine", rp), // High Tom 1
-			51: new OneShotNoisePatch(is, 1, 0, 1, 7000, ga), // Ride Cymbal 1
+			51: new OneShotNoisePatch(is, 1, 0, 0.5, 16000, ga), // Ride Cymbal 1
 		};
 	}
 
@@ -411,6 +411,7 @@ export class Wasy {
 	dynamicsCompressor: DynamicsCompressorNode;
 	playerWorker: Worker;
 	patchGenerator: PatchGenerator;
+	paused: boolean;
 	private _emitter: SingleEventEmitter<TimedEvent>;
 
 	constructor(public audioContext: AudioContext, destination: AudioNode, buffer?: ArrayBuffer) {
@@ -441,6 +442,7 @@ export class Wasy {
 				instrument.patch = this.patchGenerator.generate(instrument, event.program, i === 9);
 			});
 		}
+		this.paused = false;
 		this._emitter = new SingleEventEmitter<TimedEvent>();
 	}
 
@@ -448,8 +450,23 @@ export class Wasy {
 		this.timer.start();
 	}
 
+	pause() {
+		if (this.paused) return;
+		this.timer.invalidate();
+		for (let instrument of this.instruments) {
+			instrument.pause();
+		}
+		this.paused = true;
+	}
+	
+	resume() {
+		if (!this.paused) return;
+		this.timer.resume();
+		this.paused = false;
+	}
+
 	destroy() {
-		this.timer.pause();
+		this.timer.invalidate();
 		this.playerWorker = null;
 		this._emitter.offAll();
 		for (let instrument of this.instruments) {
@@ -463,6 +480,7 @@ export class Wasy {
 				this.timer.resolution = event.data.resolution;
 				break;
 			case "read":
+				if (this.paused) break;
 				let newEventsStore: midi.Event[][] = event.data.newEventsStore;
 				let timeStamp: timer.TimeStamp = event.data.timeStamp;
 				(<any> timeStamp).__proto__ = timer.TimeStamp.prototype;
