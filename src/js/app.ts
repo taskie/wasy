@@ -8,8 +8,6 @@ class KeyboardView {
 	static H = 480 / 16 / 2;
 	keyboardMap: boolean[][];
 	constructor(public canvasContext: CanvasRenderingContext2D) {
-		let w = KeyboardView.W;
-		let h = KeyboardView.H;
 		this.keyboardMap = [];
 		for (let i = 0; i < 16; ++i) {
 			this.keyboardMap[i] = []
@@ -21,8 +19,6 @@ class KeyboardView {
 	}
 	timedEventListener(e: wasy.TimedEvent) {
 		let me = e.midiEvent
-		let w = KeyboardView.W;
-		let h = KeyboardView.H;
 		if (me instanceof midi.ChannelEvent) {
 			if (me instanceof midi.NoteOnEvent) {
 				this.keyboardMap[me.channel][me.noteNumber] = true;
@@ -256,6 +252,7 @@ class Application {
 		}
 		if (this.timerId != null) {
 			clearInterval(this.timerId);
+			this.timerId = null;
 		}
 		
 		if (this.analyser) this.analyser.disconnect();

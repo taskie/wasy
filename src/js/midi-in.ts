@@ -25,7 +25,7 @@ export class WebMIDIIn extends MIDIIn {
 	constructor() {
 		super();
 		if (!navigator.requestMIDIAccess) return;
-		let promise = navigator.requestMIDIAccess().then((midiAccess) => {
+		navigator.requestMIDIAccess().then((midiAccess) => {
 			const it = midiAccess.inputs.values();
 			for (let input = it.next(); !input.done; input = it.next()) {
 				console.log(input.value);

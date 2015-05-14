@@ -21,7 +21,6 @@ export class Chunk {
 		public name: string,
 		public formType: string,
 		public config: Config) {
-		var pos = 0;
 	}
 
 	load() {
