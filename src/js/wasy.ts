@@ -106,6 +106,7 @@ export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
 	}
 	onNoteOff(monophony: SimpleOscillatorMonophony, time: number) {
 		monophony.oscillator.stop(time);
+		monophony.gain.gain.cancelScheduledValues(time);
 		monophony.gain.gain.setValueAtTime(0, time);
 	}
 	onExpired(monophony: SimpleOscillatorMonophony, time: number) {
@@ -169,6 +170,7 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 	}
 	onNoteOff(monophony: NoiseMonophony, time: number) {
 		monophony.source.stop(time);
+		monophony.gain.gain.cancelScheduledValues(time);
 		monophony.gain.gain.setValueAtTime(0, time);
 	}
 	onExpired(monophony: NoiseMonophony, time: number) {
@@ -211,6 +213,7 @@ export class OneShotNoisePatch extends GainedNoisePatch {
 	onExpired(monophony: NoiseMonophony, time: number) {
 		super.onExpired(monophony, time);
 		monophony.source.stop(time);
+		monophony.gain.gain.cancelScheduledValues(time);
 		monophony.gain.gain.setValueAtTime(0, time);
 	}
 }
@@ -258,6 +261,17 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 		oscillator.frequency.setValueAtTime(frequency, time);
 		oscillator.frequency.linearRampToValueAtTime(0, time + this.duration);
 		return monophony;
+	}
+	
+	onNoteOff(monophony: SimpleOscillatorMonophony, time: number) {
+
+	}
+	
+	onExpired(monophony: SimpleOscillatorMonophony, time: number) {
+		super.onExpired(monophony, time);
+		monophony.oscillator.stop(time);
+		monophony.gain.gain.cancelScheduledValues(time);
+		monophony.gain.gain.setValueAtTime(0, time);
 	}
 }
 
@@ -318,8 +332,15 @@ export class DrumKitPatch extends Patch<Monophony> {
 		if (!(index in this.patchMap)) {
 			index = 0;
 		}
-		let patch = this.patchMap[index];
-		let monophony = patch.onNoteOn(event, time);
+		const patch = this.patchMap[index];
+		const hiHats = [42, 44, 46];
+		if (hiHats.indexOf(index) != -1) {
+			for (const hiHat of hiHats) {
+				if (hiHat === index) continue;
+				this.instrument.expireNote(hiHat, time);
+			}
+		}
+		const monophony = patch.onNoteOn(event, time);
 		monophony.parentPatch = patch;
 		return monophony;
 	}

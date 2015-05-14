@@ -181,8 +181,7 @@ export const percussionKeyMap = {
   81: "Open Triangle"
 }
 
-export interface ExpiredMessage<T>
-{
+export interface ExpiredMessage<T> {
   data: T;
   time: number;
 }
@@ -207,11 +206,11 @@ export class NotePool<T> {
   }
 
   register(noteNumber: number, data: T, time: number) {
+    // check store
     {
-      // check store
       let oldData = this._noteStore[noteNumber];
       if (oldData != null) {
-        this._expiredEmitter.emit({data: oldData, time});
+        this._expiredEmitter.emit({ data: oldData, time });
         let oldIndex = this._noteNumberQueue.indexOf(noteNumber);
         if (oldIndex !== -1) {
           this._noteNumberQueue.splice(oldIndex, 1);
@@ -219,20 +218,31 @@ export class NotePool<T> {
       }
       this._noteStore[noteNumber] = data;
     }
+    // check queue
     {
-      // check queue
       this._noteNumberQueue.push(noteNumber);
       while (this._noteNumberQueue.length > this.polyphony) {
         let oldNoteNumber = this._noteNumberQueue.shift();
-        this._expiredEmitter.emit({data: this._noteStore[oldNoteNumber], time});
+        this._expiredEmitter.emit({ data: this._noteStore[oldNoteNumber], time });
         this._noteStore[oldNoteNumber] = null;
+      }
+    }
+  }
+
+  unregister(noteNumber: number, time: number) {
+    let oldData = this._noteStore[noteNumber];
+    if (oldData != null) {
+      this._expiredEmitter.emit({ data: oldData, time });
+      let oldIndex = this._noteNumberQueue.indexOf(noteNumber);
+      if (oldIndex !== -1) {
+        this._noteNumberQueue.splice(oldIndex, 1);
       }
     }
   }
 
   unregisterAll(time: number = 0) {
     for (let noteNumber of this._noteNumberQueue) {
-      this._expiredEmitter.emit({data: this._noteStore[noteNumber], time});
+      this._expiredEmitter.emit({ data: this._noteStore[noteNumber], time });
     }
     this._noteStore = {};
     this._noteNumberQueue = [];
@@ -269,7 +279,7 @@ export class Instrument<T> {
   panpot: number;      // 10
   expression: number;  // 11
   pitchBend: number;
-  
+
   constructor(public audioContext: AudioContext, public destination: AudioNode) {
     this.notePool = new NotePool<T>();
     this.notePool.onExpired(this._expiredListener.bind(this));
@@ -305,16 +315,19 @@ export class Instrument<T> {
     this._gain.gain.setValueAtTime(this.volume / 127 * expression / 127, time);
     this.expression = expression;
   }
-  get detuneRange () { return 2; }
+  get detuneRange() { return 2; }
   set detune(detune: number) { this.pitchBend = detune / 100 / this.detuneRange * 8192; }
-  get detune () { return this.pitchBend / 8192 * this.detuneRange * 100; }
+  get detune() { return this.pitchBend / 8192 * this.detuneRange * 100; }
   registerNote(noteNumber: number, data: T, time: number) {
     this.notePool.register(noteNumber, data, time);
   }
   findNote(noteNumber: number) {
     return this.notePool.find(noteNumber);
   }
-  get noteStore () {
+  expireNote(noteNumber: number, time: number) {
+    this.notePool.unregister(noteNumber, time);
+  }
+  get noteStore() {
     return this.notePool.noteStore;
   }
   onExpired(listener: (data: ExpiredMessage<T>) => void) {
