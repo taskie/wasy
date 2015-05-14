@@ -1,4 +1,5 @@
 import * as wasy from "./wasy";
+import * as midiIn from "./midi-in";
 import * as midi from "./lib/midi";
 
 class KeyboardView {
@@ -121,6 +122,8 @@ class Application {
 	songs: Song[];
 	songDirectory: string;
 
+	midiIns: midiIn.MIDIIn[];
+
 	start() {
 		document.addEventListener("DOMContentLoaded", this.run.bind(this));
 	}
@@ -132,6 +135,13 @@ class Application {
 		this.canvasContext = <CanvasRenderingContext2D> canvas.getContext("2d");
 		this.keyboardView = new KeyboardView(this.canvasContext);
 		this.analyserView = new AnalyserView(this.canvasContext);
+
+		this.midiIns = [];
+		this.midiIns.push(new midiIn.WebMIDIIn());
+		this.midiIns.push(new midiIn.WebMidiLinkIn());
+		for (const midiIn of this.midiIns) {
+			midiIn.on((e) => this.midiEventListener(e));
+		}
 
 		let fileButton = <HTMLInputElement> document.querySelector("input#fileButton");
 		fileButton.addEventListener("change", this.fileChangeListener.bind(this));
@@ -158,6 +168,7 @@ class Application {
 			}
 		}
 		xhr.send();
+		this.playWithBuffer();
 	}
 
 	fileChangeListener(e: Event) {
@@ -172,13 +183,6 @@ class Application {
 	}
 
 	playListener(e: Event) {
-		if (this.wasy != null) {
-			this.wasy.destroy();
-			this.wasy = null;
-		}
-		if (this.timerId != null) {
-			clearInterval(this.timerId);
-		}
 		this.keyboardView = new KeyboardView(this.canvasContext);
 		this.analyserView = new AnalyserView(this.canvasContext);
 
@@ -201,15 +205,27 @@ class Application {
 			xhr.send();
 		}
 	}
+	
+	midiEventListener(e: midi.Event) {
+		this.wasy.receiveExternalMidiEvent(e);
+	}
 
-	playWithBuffer(buffer: ArrayBuffer) {
+	playWithBuffer(buffer?: ArrayBuffer) {
+		if (this.wasy != null) {
+			this.wasy.destroy();
+			this.wasy = null;
+		}
+		if (this.timerId != null) {
+			clearInterval(this.timerId);
+		}
+		
 		if (this.analyser) this.analyser.disconnect();
 		this.analyser = this.audioContext.createAnalyser();
 		this.analyser.connect(this.audioContext.destination);
 		this.analyserView.analyser = this.analyser;
 		this.analyser.smoothingTimeConstant = 0;
 
-		this.wasy = new wasy.Wasy(this.audioContext, buffer, this.analyser);
+		this.wasy = new wasy.Wasy(this.audioContext, this.analyser, buffer);
 		this.wasy.play();
 		this.wasy.onTimedEvent(this.keyboardView.timedEventListener.bind(this.keyboardView));
 		this.timerId = setInterval(() => {

@@ -19,9 +19,11 @@ export class Timer {
 	currentTime: number;
 	delayInSeconds: number;
 	secondsPerBeat: number;
+	
 	timerId: any;
 	_emitter: SingleEventEmitter<TimeStamp>;
 	get ticksPerSecond() { return this.resolution / this.secondsPerBeat; }
+	set ticksPerSecond(tps: number) { this.secondsPerBeat = this.resolution / tps; } 
 	get beatsPerMinute() { return 60 / this.secondsPerBeat; }
 	set beatsPerMinute(bpm: number) { this.secondsPerBeat = 60 / bpm; }
 	constructor(public audioContext: AudioContext, public resolution: number = 480, public durationInSeconds: number = 0.2) {
@@ -45,14 +47,16 @@ export class Timer {
 		this.oldTick = this.tick;
 		this.tick += this.ticksPerSecond * this.durationInSeconds;
 		this.currentTime = this.audioContext.currentTime;
-		
+		this._emitter.emit(this.createTimeStamp());
+	}
+	createTimeStamp() {
 		let timeStamp = new TimeStamp();
 		timeStamp.tick = this.tick;
 		timeStamp.oldTick = this.oldTick;
 		timeStamp.currentTime = this.currentTime;
 		timeStamp.delayInSeconds = this.delayInSeconds;
-		timeStamp.ticksPerSecond = this.ticksPerSecond;		
-		this._emitter.emit(timeStamp);
+		timeStamp.ticksPerSecond = this.ticksPerSecond;	
+		return timeStamp;
 	}
 	pause() {
 		clearInterval(this.timerId);

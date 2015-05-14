@@ -209,7 +209,7 @@ export class OneShotNoisePatch extends GainedNoisePatch {
 	onNoteOff(monophony: NoiseMonophony, time: number) {
 
 	}
-	
+
 	onExpired(monophony: NoiseMonophony, time: number) {
 		super.onExpired(monophony, time);
 		monophony.source.stop(time);
@@ -262,11 +262,11 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 		oscillator.frequency.linearRampToValueAtTime(0, time + this.duration);
 		return monophony;
 	}
-	
+
 	onNoteOff(monophony: SimpleOscillatorMonophony, time: number) {
 
 	}
-	
+
 	onExpired(monophony: SimpleOscillatorMonophony, time: number) {
 		super.onExpired(monophony, time);
 		monophony.oscillator.stop(time);
@@ -399,8 +399,7 @@ export class PatchGenerator {
 	}
 }
 
-export interface TimedEvent
-{
+export interface TimedEvent {
 	timeStamp: timer.TimeStamp;
 	midiEvent: midi.Event;
 }
@@ -414,15 +413,17 @@ export class Wasy {
 	patchGenerator: PatchGenerator;
 	private _emitter: SingleEventEmitter<TimedEvent>;
 
-	constructor(public audioContext: AudioContext, buffer: ArrayBuffer, destination: AudioNode) {
+	constructor(public audioContext: AudioContext, destination: AudioNode, buffer?: ArrayBuffer) {
+		if (buffer != null) {
+			this.playerWorker = new Worker("./player-worker.js");
+			let initMessage = { type: "init", buffer };
+			this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
+			this.playerWorker.postMessage({ type: "resolution" });
+			this.playerWorker.addEventListener("message", this.playerWorkerMessageListener.bind(this));
+		}
 		this.timer = new timer.Timer(this.audioContext);
 		this.timer.onTiming(this.timingListener.bind(this));
-		this.playerWorker = new Worker("./player-worker.js");
-		let initMessage = { type: "init", buffer };
 		this.patchGenerator = new PatchGenerator();
-		this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
-		this.playerWorker.postMessage({ type: "resolution" });
-		this.playerWorker.addEventListener("message", this.playerWorkerMessageListener.bind(this));
 		this.instruments = [];
 		this.gain = this.audioContext.createGain();
 		this.gain.gain.value = 0.1;
@@ -446,7 +447,7 @@ export class Wasy {
 	play() {
 		this.timer.start();
 	}
-	
+
 	destroy() {
 		this.timer.pause();
 		this.playerWorker = null;
@@ -468,7 +469,7 @@ export class Wasy {
 				newEventsStore.forEach((newEvents, channelNumber) => {
 					for (let newEvent of newEvents) {
 						let event = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
-						this._emitter.emit({timeStamp, midiEvent: event})
+						this._emitter.emit({ timeStamp, midiEvent: event })
 						let time = timeStamp.accurateTime(event.tick);
 						this.instruments[channelNumber].receiveEvent(event, time);
 						if (channelNumber === 0) {
@@ -483,15 +484,29 @@ export class Wasy {
 				break;
 		}
 	}
-	
+
+	receiveExternalMidiEvent(event: midi.Event) {
+		const time = this.audioContext.currentTime;
+		if (event instanceof midi.ChannelEvent) {
+			this.instruments[event.channel].receiveEvent(event, time);
+		} else {
+			for (const instrument of this.instruments) {
+				instrument.receiveEvent(event, time);
+			}
+		}
+		const timeStamp = this.timer.createTimeStamp();
+		timeStamp.currentTime = time;
+		this._emitter.emit({ timeStamp, midiEvent: event });
+	}
+
 	onTimedEvent(listener: (event: TimedEvent) => void) {
 		this._emitter.on(listener);
 	}
-	
+
 	offTimedEvent(listener: (event: TimedEvent) => void) {
 		this._emitter.off(listener);
 	}
-	
+
 	timingListener(timeStamp: timer.TimeStamp) {
 		if (this.playerWorker != null) {
 			this.playerWorker.postMessage({ type: "read", timeStamp });
