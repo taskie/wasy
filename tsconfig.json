@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "outDir": "./build/",
+        "sourceMap": true,
+        "noImplicitAny": true,
+        "module": "es2015",
+        "target": "es2015"
+    },
+    "files": [
+        "./src/lib.ts"
+    ]
+}

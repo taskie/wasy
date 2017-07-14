@@ -1,7 +1,10 @@
 node_modules
-typings
 
 build
 tmp
 
-src/data/midi
+*.mk
+
+logs
+*.log
+npm-debug.log*
