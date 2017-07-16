@@ -1,70 +1,11 @@
-import * as midi from "./lib/midi";
-import * as timer from "./lib/timer";
-import * as player from "./lib/player";
-import * as tuning from "./lib/tuning";
-import SingleEventEmitter from "./lib/single-event-emitter";
-import * as gm from "./gm";
-
-export class Monophony {
-	parentPatch: Patch<Monophony>;
-	managedNodes: AudioNode[];
-	detunableNodes: AudioNode[];
-}
-
-export class Patch<T extends Monophony> implements gm.Patch<T> {
-	tuning: tuning.Tuning;
-	constructor(
-		public instrument: gm.Instrument<Monophony>,
-		public destination: AudioNode = instrument.source) {
-		this.tuning = new tuning.EqualTemperamentTuning();
-	}
-	get detune() { return this.instrument.detune; }
-	set detune(detune: number) { this.instrument.detune = detune; }
-	get audioContext() { return this.instrument.audioContext; }
-	receiveEvent(event: midi.Event, time: number) {
-		if (event instanceof midi.NoteOnEvent) {
-			let monophony = this.onNoteOn(event, time);
-			if (monophony != null) {
-				if (monophony.parentPatch == null) monophony.parentPatch = this;
-				this.instrument.registerNote(event.noteNumber, monophony, time);
-			}
-		} else if (event instanceof midi.NoteOffEvent) {
-			let monophony = this.instrument.findNote(event.noteNumber);
-			if (monophony != null) {
-				this.onNoteOff(<T>monophony, time);
-			}
-		} else if (event instanceof midi.PitchBendEvent) {
-			for (let key in this.instrument.noteStore) {
-				let monophony = this.instrument.noteStore[key];
-				if (monophony != null && monophony.parentPatch === this) {
-					this.onPitchBend(event, <T>monophony, time);
-				}
-			}
-		}
-	}
-	onNoteOn(event: midi.NoteOnEvent, time: number): T {
-		return null;
-	}
-	onNoteOff(data: T, time: number) {
-
-	}
-	onExpired(monophony: T, time: number) {
-		setTimeout(() => {
-			for (let node of monophony.managedNodes) {
-				node.disconnect();
-			}
-		}, 1000);
-	}
-	onPitchBend(event: midi.PitchBendEvent, monophony: T, time: number) {
-		if (monophony.detunableNodes != null) {
-			for (let node of monophony.detunableNodes) {
-				let oscillator = <OscillatorNode> node;
-				this.instrument.pitchBend = event.value;
-				oscillator.detune.setValueAtTime(this.detune, time);
-			}
-		}
-	}
-}
+import * as midi from "./midi/event";
+import * as timer from "./player/timer";
+import * as player from "./player";
+import * as tuning from "./player/tuning";
+import Signal from "../signal";
+import * as gm from "./midi/gm";
+import * as inst from "./midi/instrument";
+import { Monophony, Patch } from "./synth/patch";
 
 export class SimpleOscillatorMonophony extends Monophony {
 	oscillator: OscillatorNode;
@@ -74,9 +15,10 @@ export class SimpleOscillatorMonophony extends Monophony {
 export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
 {
 	constructor(
-		instrument: gm.Instrument<Monophony>,
-		public oscillatorType: string = "square",
-		destination?: AudioNode) {
+		instrument: inst.Instrument<Monophony>,
+		public oscillatorType: OscillatorType = "square",
+		destination?: AudioNode,
+	) {
 		super(instrument, destination);
 	}
 	onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
@@ -123,7 +65,7 @@ export class NoiseMonophony extends Monophony {
 
 export class NoisePatch extends Patch<NoiseMonophony> {
 	static noiseBuffer: AudioBuffer;
-	constructor(instrument: gm.Instrument<Monophony>, destination?: AudioNode) {
+	constructor(instrument: inst.Instrument<Monophony>, destination?: AudioNode) {
 		super(instrument, destination);
 		if (NoisePatch.noiseBuffer == null) {
 			var frame = 44100 * 2;
@@ -180,7 +122,7 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 
 export class GainedNoisePatch extends NoisePatch {
 	constructor(
-		instrument: gm.Instrument<Monophony>,
+		instrument: inst.Instrument<Monophony>,
 		public valueAtBegin: number,
 		public valueAtEnd: number,
 		public duration: number,
@@ -220,11 +162,11 @@ export class OneShotNoisePatch extends GainedNoisePatch {
 
 export class GainedOscillatorPatch extends SimpleOscillatorPatch {
 	constructor(
-		instrument: gm.Instrument<Monophony>,
+		instrument: inst.Instrument<Monophony>,
 		public valueAtBegin: number,
 		public valueAtEnd: number,
 		public duration: number,
-		oscillatorType?: string,
+		oscillatorType?: OscillatorType,
 		destination?: AudioNode) {
 		super(instrument, oscillatorType, destination);
 	}
@@ -241,10 +183,10 @@ export class GainedOscillatorPatch extends SimpleOscillatorPatch {
 
 export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 	constructor(
-		instrument: gm.Instrument<Monophony>,
+		instrument: inst.Instrument<Monophony>,
 		duration: number,
 		public fixedFrequency?: number,
-		oscillatorType?: string,
+		oscillatorType?: OscillatorType,
 		destination?: AudioNode) {
 		super(instrument, 1, 0, duration, oscillatorType, destination);
 	}
@@ -282,8 +224,9 @@ export class DrumKitPatch extends Patch<Monophony> {
 	gain: GainNode;
 
 	constructor(
-		instrument: gm.Instrument<Monophony>,
-		destination?: AudioNode) {
+		instrument: inst.Instrument<Monophony>,
+		destination?: AudioNode,
+	) {
 		let is = instrument;
 		let ds = destination;
 		super(is, ds);
@@ -344,17 +287,19 @@ export class DrumKitPatch extends Patch<Monophony> {
 		monophony.parentPatch = patch;
 		return monophony;
 	}
+
 	onNoteOff(monophony: NoiseMonophony, time: number) {
 		monophony.parentPatch.onNoteOff(monophony, time);
 	}
+
 	onExpired(monophony: NoiseMonophony, time: number) {
 		monophony.parentPatch.onExpired(monophony, time);
 	}
 }
 
 export class PatchGenerator {
-	generate(instrument: gm.Instrument<Monophony>, program: number, isDrum = false): Patch<Monophony> {
-		const simpleMap = {
+	generate(instrument: inst.Instrument<Monophony>, program: number, isDrum = false): Patch<Monophony> {
+		const simpleMap: { [key: number]: OscillatorType } = {
 			0x00: "sine",
 			0x01: "triangle",
 			0x02: "triangle",
@@ -395,139 +340,6 @@ export class PatchGenerator {
 			} else {
 				return new SimpleOscillatorPatch(instrument, "square");
 			}
-		}
-	}
-}
-
-export interface TimedEvent {
-	timeStamp: timer.TimeStamp;
-	midiEvent: midi.Event;
-}
-
-export class Wasy {
-	timer: timer.Timer;
-	instruments: gm.Instrument<Monophony>[];
-	gain: GainNode;
-	dynamicsCompressor: DynamicsCompressorNode;
-	playerWorker: Worker;
-	patchGenerator: PatchGenerator;
-	paused: boolean;
-	private _emitter: SingleEventEmitter<TimedEvent>;
-
-	constructor(public audioContext: AudioContext, destination: AudioNode, buffer?: ArrayBuffer) {
-		if (buffer != null) {
-			this.playerWorker = new Worker("./player-worker.js");
-			let initMessage = { type: "init", buffer };
-			this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
-			this.playerWorker.postMessage({ type: "resolution" });
-			this.playerWorker.addEventListener("message", this.playerWorkerMessageListener.bind(this));
-		}
-		this.timer = new timer.Timer(this.audioContext);
-		this.timer.onTiming(this.timingListener.bind(this));
-		this.patchGenerator = new PatchGenerator();
-		this.instruments = [];
-		this.gain = this.audioContext.createGain();
-		this.gain.gain.value = 0.1;
-		this.dynamicsCompressor = this.audioContext.createDynamicsCompressor();
-		this.gain.connect(this.dynamicsCompressor);
-		this.dynamicsCompressor.connect(destination);
-		for (let i = 0; i < 16; ++i) {
-			let instrument = new gm.Instrument<Monophony>(this.audioContext, this.gain);
-			instrument.patch = this.patchGenerator.generate(instrument, 0, i === 9);
-			this.instruments[i] = instrument;
-			instrument.onExpired((data: gm.ExpiredMessage<Monophony>) => {
-				data.data.parentPatch.onExpired(<any> data.data, data.time);
-			});
-			instrument.onProgramChange((event: midi.ProgramChangeEvent) => {
-				instrument.patch = this.patchGenerator.generate(instrument, event.program, i === 9);
-			});
-		}
-		this.paused = false;
-		this._emitter = new SingleEventEmitter<TimedEvent>();
-	}
-
-	play() {
-		this.timer.start();
-	}
-
-	pause() {
-		if (this.paused) return;
-		this.timer.invalidate();
-		for (let instrument of this.instruments) {
-			instrument.pause();
-		}
-		this.paused = true;
-	}
-	
-	resume() {
-		if (!this.paused) return;
-		this.timer.resume();
-		this.paused = false;
-	}
-
-	destroy() {
-		this.timer.invalidate();
-		this.playerWorker = null;
-		this._emitter.offAll();
-		for (let instrument of this.instruments) {
-			instrument.destroy();
-		}
-	}
-
-	playerWorkerMessageListener(event: MessageEvent) {
-		switch (event.data.type) {
-			case "resolution":
-				this.timer.resolution = event.data.resolution;
-				break;
-			case "read":
-				if (this.paused) break;
-				let newEventsStore: midi.Event[][] = event.data.newEventsStore;
-				let timeStamp: timer.TimeStamp = event.data.timeStamp;
-				(<any> timeStamp).__proto__ = timer.TimeStamp.prototype;
-				newEventsStore.forEach((newEvents, channelNumber) => {
-					for (let newEvent of newEvents) {
-						let event = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
-						this._emitter.emit({ timeStamp, midiEvent: event })
-						let time = timeStamp.accurateTime(event.tick);
-						this.instruments[channelNumber].receiveEvent(event, time);
-						if (channelNumber === 0) {
-							if (event instanceof midi.TempoMetaEvent) {
-								this.timer.secondsPerBeat = event.secondsPerBeat;
-							}
-						}
-					}
-				});
-				break;
-			default:
-				break;
-		}
-	}
-
-	receiveExternalMidiEvent(event: midi.Event) {
-		const time = this.audioContext.currentTime;
-		if (event instanceof midi.ChannelEvent) {
-			this.instruments[event.channel].receiveEvent(event, time);
-		} else {
-			for (const instrument of this.instruments) {
-				instrument.receiveEvent(event, time);
-			}
-		}
-		const timeStamp = this.timer.createTimeStamp();
-		timeStamp.currentTime = time;
-		this._emitter.emit({ timeStamp, midiEvent: event });
-	}
-
-	onTimedEvent(listener: (event: TimedEvent) => void) {
-		this._emitter.on(listener);
-	}
-
-	offTimedEvent(listener: (event: TimedEvent) => void) {
-		this._emitter.off(listener);
-	}
-
-	timingListener(timeStamp: timer.TimeStamp) {
-		if (this.playerWorker != null) {
-			this.playerWorker.postMessage({ type: "read", timeStamp });
 		}
 	}
 }

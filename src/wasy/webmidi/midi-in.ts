@@ -1,11 +1,11 @@
-import * as midi from "./lib/midi";
-import * as dvu from "./lib/data-view-util";
-import SingleEventEmitter from "./lib/single-event-emitter";
+import * as midi from "../midi/event";
+import * as dvu from "../../binary/data-view-util";
+import Signal from "../../signal";
 
 export class MIDIIn {
-	private _emitter: SingleEventEmitter<midi.Event>;
+	private _emitter: Signal<midi.Event>;
 	constructor() {
-		this._emitter = new SingleEventEmitter();
+		this._emitter = new Signal();
 	}
 	on(listener: (event: midi.Event) => void) {
 		this._emitter.on(listener);
@@ -24,12 +24,12 @@ export class MIDIIn {
 export class WebMIDIIn extends MIDIIn {
 	constructor() {
 		super();
-		if (!navigator.requestMIDIAccess) return;
-		navigator.requestMIDIAccess().then((midiAccess) => {
+		if (!(<any> navigator).requestMIDIAccess) { return; }
+		(<any> navigator).requestMIDIAccess().then((midiAccess: any) => {
 			const it = midiAccess.inputs.values();
 			for (let input = it.next(); !input.done; input = it.next()) {
 				console.log(input.value);
-				input.value.onmidimessage = (event) => {
+				input.value.onmidimessage = (event: any) => {
 					const dataView = new DataView(event.data.buffer);
 					const status = dataView.getUint8(0);
 					const subDataView = dvu.dataViewGetSubDataView(dataView, 1);
@@ -37,7 +37,7 @@ export class WebMIDIIn extends MIDIIn {
 					this.emit(midiEvent);
 				};
 			}
-		}, (reason) => {
+		}, (reason: any) => {
 				console.log(reason);
 			});
 	}

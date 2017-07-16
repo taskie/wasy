@@ -2,7 +2,7 @@ const webpack = require("webpack");
 
 module.exports = {
     entry: {
-        wasy: "./src/lib.ts",
+        wasy: "./src/wasy.ts",
     },
     target: "node",
     output: {

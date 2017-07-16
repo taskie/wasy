@@ -1,4 +1,4 @@
-import * as dvu from "./data-view-util";
+import * as dvu from "../../binary/data-view-util";
 
 export class Event {
 	constructor(public dataView: DataView, public tick: number, public status: number) { }

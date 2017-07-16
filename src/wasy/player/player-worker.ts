@@ -1,5 +1,5 @@
-import * as player from "./lib/player";
-import * as timer from "./lib/timer";
+import * as player from "../player";
+import * as timer from "../player/timer";
 
 class PlayerWorker
 {

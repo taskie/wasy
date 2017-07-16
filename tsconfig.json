@@ -3,10 +3,16 @@
         "outDir": "./build/",
         "sourceMap": true,
         "noImplicitAny": true,
-        "module": "es2015",
-        "target": "es2015"
+        "module": "commonjs",
+        "target": "es2015",
+        "declaration": true
     },
-    "files": [
-        "./src/lib.ts"
+    "include": [
+        "./src/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "./src/**/_*.ts",
+        "./src/**/_*/*.ts"
     ]
 }

@@ -1,6 +1,6 @@
-import * as xiff from "./xiff";
-import * as dvu from "./data-view-util";
-import * as midi from "./midi";
+import * as xiff from "../xiff";
+import * as dvu from "../binary/data-view-util";
+import * as midi from "./midi/event";
 
 export class Header {
 	format: number;
@@ -89,7 +89,7 @@ export class Song {
 	}
 
 	load() {
-		let smf = xiff.load(this.buffer, xiff.SMF);
+		let smf = xiff.load(this.buffer, xiff.configs.smf);
 		this.tracks = [];
 		smf.children.forEach((chunk) => {
 			switch (chunk.name) {

@@ -1,4 +1,4 @@
-import * as midi from "./midi";
+import * as midi from "./midi/event";
 import * as smf from "./smf";
 
 export class Player {

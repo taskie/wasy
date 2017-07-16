@@ -1,17 +1,10 @@
-interface Config {
+import { dataViewGetString } from "./binary/data-view-util";
+
+export interface Config {
 	recursive?: string[];
 	bigEndian?: boolean;
 	allowOddOffset?: boolean;
 }
-
-function dataViewGetString(
-	dataView: DataView, byteOffset: number, length: number): string {
-	let bytes = new Uint8Array(
-		dataView.buffer,
-		dataView.byteOffset + byteOffset,
-		length);
-	return String.fromCharCode.apply(null, bytes);
-};
 
 export class Chunk {
 	public children: Chunk[];
@@ -19,9 +12,9 @@ export class Chunk {
 	constructor(
 		public dataView: DataView,
 		public name: string,
-		public formType: string,
-		public config: Config) {
-	}
+		public formType: string | null,
+		public config: Config,
+	) { }
 
 	load() {
 		this.children = [];
@@ -50,9 +43,11 @@ export class Chunk {
 	}
 }
 
-export let RIFF: Config = { recursive: ["RIFF", "LIST"] }
-export let IFF: Config = { bigEndian: true, recursive: ["FORM", "LIST", "CAT "] }
-export let SMF: Config = { bigEndian: true, allowOddOffset: true }
+export let configs: {[key: string]: Config} = {
+	riff: { recursive: ["RIFF", "LIST"] },
+	iff: { bigEndian: true, recursive: ["FORM", "LIST", "CAT "] },
+	smf: { bigEndian: true, allowOddOffset: true },
+};
 
 export let load = (buffer: ArrayBuffer, config: Config) => {
 	let dataView = new DataView(buffer);
