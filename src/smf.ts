@@ -1,5 +1,5 @@
-import * as xiff from "../xiff";
-import * as dvu from "../binary/data-view-util";
+import * as xiff from "./xiff";
+import * as dvu from "./binary/data-view-util";
 import * as midi from "./midi/event";
 
 export class Header {

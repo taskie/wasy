@@ -11,7 +11,6 @@ reload:
 	$(MAKE) -B build/vars.mk
 
 clean:
-	-rm -f vars.mk
 	-rm -rf build/
 
 clobber: clean
@@ -24,10 +23,11 @@ distribute:
 js: $(DST_JS)
 
 build/vars.mk: tools/vars.js
+	@mkdir -p $(dir $@)
 	node $< > $@
 
 BIN := $(shell npm bin)
 
 $(DST_JS): $(SRC_TS) $(SRC_JS) $(CONFIG)
 	@mkdir -p $(dir $@)
-	$(BIN)/webpack --progress --colors --config webpack.config.js
+	$(BIN)/tsc

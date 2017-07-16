@@ -1,12 +1,12 @@
-import * as midi from "./wasy/midi/event";
-import * as timer from "./wasy/player/timer";
-import * as player from "./wasy/player";
-import * as tuning from "./wasy/player/tuning";
+import * as midi from "./midi/event";
+import * as timer from "./player/timer";
+import * as player from "./player";
+import * as tuning from "./player/tuning";
 import Signal from "./signal";
-import * as gm from "./wasy/midi/gm";
-import * as inst from "./wasy/midi/instrument";
-import { PatchGenerator } from "./wasy/synth";
-import { Monophony } from "./wasy/synth/patch";
+import * as gm from "./midi/gm";
+import * as inst from "./midi/instrument";
+import { PatchGenerator } from "./synth";
+import { Monophony } from "./synth/patch";
 
 export interface TimedEvent {
 	timeStamp: timer.TimeStamp;

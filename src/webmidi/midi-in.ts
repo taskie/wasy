@@ -1,6 +1,6 @@
 import * as midi from "../midi/event";
-import * as dvu from "../../binary/data-view-util";
-import Signal from "../../signal";
+import * as dvu from "../binary/data-view-util";
+import Signal from "../signal";
 
 export class MIDIIn {
 	private _emitter: Signal<midi.Event>;

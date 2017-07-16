@@ -2,7 +2,7 @@ import * as midi from "./midi/event";
 import * as timer from "./player/timer";
 import * as player from "./player";
 import * as tuning from "./player/tuning";
-import Signal from "../signal";
+import Signal from "./signal";
 import * as gm from "./midi/gm";
 import * as inst from "./midi/instrument";
 import { Monophony, Patch } from "./synth/patch";

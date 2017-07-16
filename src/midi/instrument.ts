@@ -1,5 +1,5 @@
 import * as midi from "./event";
-import Signal from "../../signal";
+import Signal from "../signal";
 
 export interface ExpiredMessage<T> {
     data: T;

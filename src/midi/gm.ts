@@ -1,5 +1,5 @@
-import * as midi from "../midi/event";
-import Signal from "../../signal";
+import * as midi from "./event";
+import Signal from "../signal";
 
 export const instrumentPatchs = [
     "Bright Piano",
