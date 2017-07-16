@@ -12,10 +12,10 @@ class PlayerWorker
 			case "read":
 				let timeStamp: timer.TimeStamp = event.data.timeStamp;
 				let newEventsStore = this.player.read(timeStamp.tick);
-				self.postMessage({type: "read", newEventsStore: newEventsStore, timeStamp}, null);
+				(<any> self.postMessage)({type: "read", newEventsStore: newEventsStore, timeStamp}, []);
 				break;
 			case "resolution":
-				self.postMessage({type: "resolution", resolution: this.player.resolution}, null);
+				(<any> self.postMessage)({type: "resolution", resolution: this.player.resolution}, []);
 				break;
 		}
 	}
