@@ -18,7 +18,7 @@ const conf = {
     src_ts,
     src_js,
     dst_js,
-    config: ["package.json", "webpack.config.js", "tsconfig.json"].map((s) => path.join(cwd, s)),
+    config_js: ["package.json", "tsconfig.json"].map((s) => path.join(cwd, s)),
 };
 
 for (let key in conf) {
