@@ -1,6 +1,6 @@
 .PHONY: all reload-and-build reload clean clobber distribute js
 
-include vars.mk
+include build/vars.mk
 
 all: reload-and-build
 
@@ -8,7 +8,7 @@ reload-and-build: reload
 	$(MAKE) js
 
 reload:
-	$(MAKE) -B vars.mk
+	$(MAKE) -B build/vars.mk
 
 clean:
 	-rm -f vars.mk
@@ -18,15 +18,16 @@ clobber: clean
 	-rm -rf dist/
 
 distribute:
-	mkdir -p dist/
+	cp -pr build dist
+	-rm -f dist/vars.mk
 
 js: $(DST_JS)
 
-vars.mk: tools/vars.js
+build/vars.mk: tools/vars.js
 	node $< > $@
 
 BIN := $(shell npm bin)
 
-$(DST_JS): $(SRC_TS) $(SRC_JS)
+$(DST_JS): $(SRC_TS) $(SRC_JS) $(CONFIG)
 	@mkdir -p $(dir $@)
 	$(BIN)/webpack --progress --colors --config webpack.config.js

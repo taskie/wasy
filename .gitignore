@@ -2,8 +2,7 @@ node_modules
 
 build
 tmp
-
-*.mk
+dist
 
 logs
 *.log

@@ -7,9 +7,9 @@ const src = path.join(cwd, "src");
 const dst = path.join(cwd, "build");
 
 // JS
-const src_ts = glob.sync(src + "/**/*.ts");
-const src_js = glob.sync(src + "/**/*.js");
-const dst_js = [`${dst}/wasy.js`];
+const src_ts = glob.sync(path.join(src, "**", "*.ts"));
+const src_js = glob.sync(path.join(src, "**", "*.js"));
+const dst_js = [path.join(dst, "wasy.js")];
 
 // generate *.mk
 const conf = {
@@ -18,6 +18,7 @@ const conf = {
     src_ts,
     src_js,
     dst_js,
+    config: ["package.json", "webpack.config.js", "tsconfig.json"].map((s) => path.join(cwd, s)),
 };
 
 for (let key in conf) {
