@@ -88,6 +88,125 @@ const q = <T extends Element>(selector: string): T => {
     return el;
 };
 
+// Shared with KeyboardView so the strip color matches the piano roll.
+const channelColor = (ch: number, active: boolean): string => {
+    if (ch === 9) return active ? "#cdd5d6" : "#586e75";
+    const hue = (ch * 360) / 16;
+    const lightness = active ? 62 : 44;
+    const saturation = active ? 75 : 55;
+    return `hsl(${hue} ${saturation}% ${lightness}%)`;
+};
+
+// 16-row × 128-key activity grid mirroring the original simple-player. NoteOn
+// flips the cell on, NoteOff flips it off — there is no decay/release shading.
+class KeyboardView {
+    static readonly BLACK_KEY = "010100101010";
+    private map: boolean[][] = [];
+
+    constructor(
+        private ctx: CanvasRenderingContext2D,
+        private width: number,
+        private height: number,
+    ) {
+        for (let i = 0; i < 16; ++i) {
+            this.map[i] = Array.from({ length: 128 }, () => false);
+        }
+    }
+
+    onTimedEvent(e: TimedEvent) {
+        const me = e.midiEvent;
+        if (me instanceof midi.NoteOnEvent) {
+            this.map[me.channel][me.noteNumber] = true;
+        } else if (me instanceof midi.NoteOffEvent) {
+            this.map[me.channel][me.noteNumber] = false;
+        }
+    }
+
+    clear() {
+        for (let i = 0; i < 16; ++i) this.map[i].fill(false);
+    }
+
+    draw() {
+        const ctx = this.ctx;
+        const w = this.width / 128;
+        const h = this.height / 16;
+        ctx.fillStyle = "#002b36";
+        ctx.fillRect(0, 0, this.width, this.height);
+        for (let ch = 0; ch < 16; ++ch) {
+            for (let n = 0; n < 128; ++n) {
+                const on = this.map[ch][n];
+                if (on) {
+                    ctx.fillStyle = channelColor(ch, true);
+                    ctx.fillRect(n * w, ch * h + 1, w, h - 2);
+                } else if (KeyboardView.BLACK_KEY[n % 12] !== "1") {
+                    // White-key idle background tint.
+                    ctx.fillStyle = "#073642";
+                    ctx.fillRect(n * w, ch * h + 1, w, h - 2);
+                }
+            }
+            // Channel label on the far left.
+            ctx.fillStyle = "#586e75";
+            ctx.font = "9px sans-serif";
+            ctx.fillText(`ch ${ch + 1}`, 2, ch * h + h - 2);
+        }
+    }
+}
+
+class AnalyserView {
+    private array: Uint8Array<ArrayBuffer> | null = null;
+    private _analyser: AnalyserNode | null = null;
+
+    constructor(
+        private ctx: CanvasRenderingContext2D,
+        private width: number,
+        private height: number,
+    ) {}
+
+    set analyser(node: AnalyserNode) {
+        this._analyser = node;
+        this.array = new Uint8Array(new ArrayBuffer(node.frequencyBinCount | 0));
+    }
+
+    draw() {
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
+        ctx.fillStyle = "#002b36";
+        ctx.fillRect(0, 0, w, h);
+        const analyser = this._analyser;
+        const arr = this.array;
+        if (analyser == null || arr == null) return;
+
+        // Frequency-domain area fill.
+        analyser.getByteFrequencyData(arr);
+        ctx.beginPath();
+        for (let i = 0; i < w; ++i) {
+            const v = arr[((i / w) * arr.length) | 0] / 255;
+            const y = h - h * v;
+            if (i === 0) ctx.moveTo(0, y);
+            else ctx.lineTo(i, y);
+        }
+        ctx.lineTo(w, h);
+        ctx.lineTo(0, h);
+        ctx.closePath();
+        ctx.fillStyle = "#073642";
+        ctx.fill();
+
+        // Time-domain waveform line.
+        analyser.getByteTimeDomainData(arr);
+        ctx.beginPath();
+        for (let i = 0; i < w; ++i) {
+            const v = arr[((i / w) * arr.length) | 0] / 255;
+            const y = h - h * v;
+            if (i === 0) ctx.moveTo(0, y);
+            else ctx.lineTo(i, y);
+        }
+        ctx.strokeStyle = "#dc322f";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+}
+
 class PianoRollView {
     static readonly BLACK_KEY = "010100101010";
     static readonly KEYBOARD_WIDTH = 36;
@@ -160,14 +279,6 @@ class PianoRollView {
     }
     private pitchToY(pitch: number) {
         return (this.highPitch - pitch) * this.pitchHeight;
-    }
-
-    private channelColor(ch: number, active: boolean): string {
-        if (ch === 9) return active ? "#cdd5d6" : "#586e75"; // drums = neutral
-        const hue = (ch * 360) / 16;
-        const lightness = active ? 62 : 44;
-        const saturation = active ? 75 : 55;
-        return `hsl(${hue} ${saturation}% ${lightness}%)`;
     }
 
     draw() {
@@ -245,7 +356,7 @@ class PianoRollView {
             const y = this.pitchToY(note.noteNumber);
             const active =
                 note.startTick <= this.currentTick && note.endTick >= this.currentTick;
-            ctx.fillStyle = this.channelColor(note.channel, active);
+            ctx.fillStyle = channelColor(note.channel, active);
             ctx.fillRect(left, y, w, Math.max(1, ph - 1));
             // Outline played-portion vs. unplayed-portion divider for active note.
             if (active) {
@@ -322,16 +433,26 @@ class Application {
     private metaDuration!: HTMLElement;
 
     private pianoRollView!: PianoRollView;
+    private keyboardView!: KeyboardView;
+    private analyserView!: AnalyserView;
+    private analyser!: AnalyserNode;
     private isUserSeeking = false;
     private hasBuffer = false;
 
     start() {
         this.audioContext = new AudioContext();
 
+        // Analyser tap: SynthEngine → AnalyserNode → destination. AnalyserNode
+        // is a passthrough, so audio is unaffected; we just get FFT/wave data
+        // for the visualizer.
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.smoothingTimeConstant = 0;
+        this.analyser.connect(this.audioContext.destination);
+
         // The split: SynthEngine handles audio synthesis, SmfPlayer handles
         // SMF parsing + scheduling. The bridge below is the only coupling
         // between them — everything else is independent.
-        this.synth = new SynthEngine(this.audioContext, this.audioContext.destination);
+        this.synth = new SynthEngine(this.audioContext, this.analyser);
         this.player = new SmfPlayer(this.audioContext);
         this.player.onTimedEvent((e) => this.onTimedEvent(e));
 
@@ -346,14 +467,29 @@ class Application {
         this.metaResolution = q<HTMLElement>("#metaResolution");
         this.metaDuration = q<HTMLElement>("#metaDuration");
 
-        const canvas = q<HTMLCanvasElement>("#pianoRollCanvas");
+        const pianoRollCanvas = q<HTMLCanvasElement>("#pianoRollCanvas");
         this.pianoRollView = new PianoRollView(
-            canvas.getContext("2d")!,
-            canvas.width,
-            canvas.height,
+            pianoRollCanvas.getContext("2d")!,
+            pianoRollCanvas.width,
+            pianoRollCanvas.height,
         );
-        canvas.ondragover = (e) => e.preventDefault();
-        canvas.addEventListener("drop", (e) => this.onDrop(e));
+        pianoRollCanvas.ondragover = (e) => e.preventDefault();
+        pianoRollCanvas.addEventListener("drop", (e) => this.onDrop(e));
+
+        const keyboardCanvas = q<HTMLCanvasElement>("#keyboardCanvas");
+        this.keyboardView = new KeyboardView(
+            keyboardCanvas.getContext("2d")!,
+            keyboardCanvas.width,
+            keyboardCanvas.height,
+        );
+
+        const analyserCanvas = q<HTMLCanvasElement>("#analyserCanvas");
+        this.analyserView = new AnalyserView(
+            analyserCanvas.getContext("2d")!,
+            analyserCanvas.width,
+            analyserCanvas.height,
+        );
+        this.analyserView.analyser = this.analyser;
 
         this.fileButton.addEventListener("change", (e) => this.onFileChange(e));
         this.playButton.addEventListener("click", () => this.onPlay());
@@ -372,6 +508,7 @@ class Application {
         // wasy.Wasy contains exactly this same line internally.
         const time = e.timeStamp.accurateTime(e.midiEvent.tick);
         this.synth.receiveEvent(e.midiEvent, time);
+        this.keyboardView.onTimedEvent(e);
     }
 
     private async onFileChange(e: Event) {
@@ -402,6 +539,7 @@ class Application {
         };
         this.refreshMeta();
         this.pianoRollView.setSong(song);
+        this.keyboardView.clear();
 
         this.synth.pause();
         this.player.load(buffer);
@@ -439,6 +577,7 @@ class Application {
         if (!this.hasBuffer) return;
         this.player.pause();
         this.synth.pause();
+        this.keyboardView.clear();
         this.refreshButtons();
     }
 
@@ -450,6 +589,7 @@ class Application {
         this.player.seek(0);
         this.player.pause();
         this.synth.pause();
+        this.keyboardView.clear();
         this.seekBar.value = "0";
         this.refreshButtons();
     }
@@ -471,6 +611,7 @@ class Application {
         // synth state matches what it would have been at `tick`.
         this.synth.pause();
         this.player.seek(tick);
+        this.keyboardView.clear();
         this.isUserSeeking = false;
         this.refreshButtons();
     }
@@ -507,6 +648,8 @@ class Application {
             : currentTick;
         this.pianoRollView.setCurrentTick(previewTick);
         this.pianoRollView.draw();
+        this.keyboardView.draw();
+        this.analyserView.draw();
         requestAnimationFrame(() => this.tick());
     }
 }
