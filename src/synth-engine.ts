@@ -3,6 +3,16 @@ import * as inst from "./midi/instrument.js";
 import { generatePatch } from "./synth.js";
 import { Monophony } from "./synth/patch.js";
 
+// GM2 / GS bank convention:
+//   Bank MSB 0x78 → rhythm part (drum kit) on any channel
+//   Bank MSB 0x79 → melody part (normal instrument), overrides ch 9 default
+// Otherwise channel 9 is the drum part by GM convention.
+export const isDrumChannel = (channel: number, bankMSB: number) => {
+	if (bankMSB === 0x78) return true;
+	if (bankMSB === 0x79) return false;
+	return channel === 9;
+};
+
 export class SynthEngine {
 	instruments: inst.Instrument<Monophony>[];
 	gain: GainNode;
@@ -17,13 +27,13 @@ export class SynthEngine {
 		this.dynamicsCompressor.connect(destination);
 		for (let i = 0; i < 16; ++i) {
 			const instrument = new inst.Instrument<Monophony>(audioContext, this.gain);
-			instrument.patch = generatePatch(instrument, 0, i === 9);
+			instrument.patch = generatePatch(instrument, 0, isDrumChannel(i, instrument.bankMSB));
 			this.instruments[i] = instrument;
 			instrument.onExpired((data: inst.ExpiredMessage<Monophony>) => {
 				data.data.parentPatch.onExpired(data.data, data.time);
 			});
 			instrument.onProgramChange((event: midi.ProgramChangeEvent) => {
-				instrument.patch = generatePatch(instrument, event.program, i === 9);
+				instrument.patch = generatePatch(instrument, event.program, isDrumChannel(i, instrument.bankMSB));
 			});
 		}
 	}

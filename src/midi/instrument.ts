@@ -117,6 +117,12 @@ export class Instrument<T> {
     fineTune!: number;      // RPN 1: ±100 cents  (14-bit, center 0x2000)
     coarseTune!: number;    // RPN 2: ±64 semitones × 100 cents (7-bit MSB, center 0x40)
 
+    // Sustain pedal (CC 64). While `sustain` is true, incoming NoteOff
+    // events are deferred into `_sustainedNoteOffs` and dispatched in a
+    // batch when the pedal is released.
+    sustain!: boolean;
+    private _sustainedNoteOffs: Map<number, midi.NoteOffEvent> = new Map();
+
     dataEntry!: number;
     rpn!: number;
     nrpn!: number;
@@ -153,6 +159,9 @@ export class Instrument<T> {
         this.fineTune = 0;
         this.coarseTune = 0;
 
+        this.sustain = false;
+        this._sustainedNoteOffs.clear();
+
         this.dataEntry = 0;
         this.rpn = 0x3FFF;   // null RPN
         this.nrpn = 0x3FFF;  // null NRPN
@@ -161,12 +170,14 @@ export class Instrument<T> {
 
     destroy() {
         this.notePool.unregisterAll();
+        this._sustainedNoteOffs.clear();
         this._expiredEmitter.offAll();
         this._programChangeEmitter.offAll();
     }
 
     pause() {
         this.notePool.unregisterAll();
+        this._sustainedNoteOffs.clear();
     }
 
     setPanpot(panpot: number) {
@@ -253,6 +264,9 @@ export class Instrument<T> {
                 case 11:    // Expression
                     this.setExpression(event.value, time);
                     break;
+                case 64:    // Sustain (Damper) Pedal
+                    this.setSustain(event.value, time);
+                    break;
                 case 6:     // DataEntryMSB
                     this.dataEntry &= 0b00000001111111;
                     this.dataEntry |= event.value << 7;
@@ -285,6 +299,7 @@ export class Instrument<T> {
                     break;
                 case 120: // AllSoundOff
                     this.notePool.unregisterAll();
+                    this._sustainedNoteOffs.clear();
                     break;
                 case 121: // ResetAllControl
                     this.resetAllControl();
@@ -297,10 +312,40 @@ export class Instrument<T> {
             }
         } else if (event instanceof midi.ProgramChangeEvent) {
             this._programChangeEmitter.emit(event);
+        } else if (event instanceof midi.NoteOnEvent) {
+            // Re-pressing a note while sustain holds it cancels the
+            // pending NoteOff — the new attack supersedes the release.
+            this._sustainedNoteOffs.delete(event.noteNumber);
+            if (this.patch) {
+                this.patch.receiveEvent(event, time);
+            }
+        } else if (event instanceof midi.NoteOffEvent) {
+            if (this.sustain) {
+                this._sustainedNoteOffs.set(event.noteNumber, event);
+            } else if (this.patch) {
+                this.patch.receiveEvent(event, time);
+            }
         } else {
             if (this.patch) {
                 this.patch.receiveEvent(event, time);
             }
+        }
+    }
+
+    setSustain(value: number, time: number) {
+        const next = value >= 64;
+        if (this.sustain === next) return;
+        this.sustain = next;
+        if (!next) {
+            // Pedal released: dispatch every deferred NoteOff at `time`.
+            // Using `time` (the CC's audio time) — not the original
+            // NoteOff tick — keeps releases monotonic in audio order.
+            if (this.patch) {
+                for (const noteOff of this._sustainedNoteOffs.values()) {
+                    this.patch.receiveEvent(noteOff, time);
+                }
+            }
+            this._sustainedNoteOffs.clear();
         }
     }
 
