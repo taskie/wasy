@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Wasy Seekable Player</title>
+    </head>
+    <body>
+        <h1>wasy seekable-player</h1>
+        <p class="lede">
+            <code>SmfPlayer</code> (パーサ + タイマ) と <code>SynthEngine</code> (シンセ) を
+            <code>Wasy</code> ファサードを使わず直接組み合わせ、シーク UI を被せた最小例です。
+        </p>
+
+        <section class="partition">
+            <h2>SMF を読み込む</h2>
+            <input id="fileButton" type="file" accept=".mid,.midi,audio/midi" />
+            <p class="hint">下のキーボードへドラッグ &amp; ドロップでも読み込めます。</p>
+            <dl class="meta">
+                <dt>Format</dt><dd id="metaFormat">-</dd>
+                <dt>Tracks</dt><dd id="metaTracks">-</dd>
+                <dt>Resolution (TPQN)</dt><dd id="metaResolution">-</dd>
+                <dt>Duration</dt><dd id="metaDuration">-</dd>
+            </dl>
+        </section>
+
+        <section class="partition">
+            <h2>再生 / シーク</h2>
+            <div class="transport">
+                <button id="playButton" type="button">play</button>
+                <button id="pauseButton" type="button">pause</button>
+                <button id="stopButton" type="button">stop</button>
+            </div>
+            <div class="seek">
+                <input id="seekBar" type="range" min="0" max="0" step="1" value="0" disabled />
+                <output id="seekReadout" for="seekBar">0 / 0 tick</output>
+            </div>
+        </section>
+
+        <section class="partition">
+            <h2>ピアノロール</h2>
+            <canvas id="pianoRollCanvas" width="640" height="320"></canvas>
+            <p class="hint">縦軸 = 音高、横軸 = 時間。赤い縦線が現在位置 (now line)。チャネルごとに色分け、ch 10 (drums) はグレー。</p>
+        </section>
+
+        <section class="partition footnote">
+            <h2>このサンプルが示していること</h2>
+            <ul>
+                <li><code>smf.parseSong()</code> でメインスレッド側からも SMF を読み、トラック数 / 解像度 / 全長を取得</li>
+                <li><code>SmfPlayer</code> は worker 経由で再生イベントを供給するだけのパーサ。シンセは触らない</li>
+                <li><code>SynthEngine</code> は <code>SmfPlayer.onTimedEvent</code> で受けた MIDI を Web Audio に流すだけ</li>
+                <li>両者の橋渡しはアプリ側 (<code>main.ts</code>) で行う。差し替え可能性 (例: シンセを別実装に置き換え、可視化のみ <code>SmfPlayer</code> を使う) を確保した最小実装</li>
+            </ul>
+            <p>
+                <a href="https://github.com/taskie/wasy">taskie/wasy (GitHub)</a>
+            </p>
+        </section>
+
+        <script type="module" src="./src/main.ts"></script>
+    </body>
+</html>
