@@ -20,16 +20,6 @@ export class Wasy {
 	private _emitter: Signal<TimedEvent>;
 
 	constructor(public audioContext: AudioContext, destination: AudioNode, buffer?: ArrayBuffer) {
-		if (buffer != null) {
-			this.playerWorker = new Worker(
-				new URL("./player/player-worker.js", import.meta.url),
-				{ type: "module" },
-			);
-			const initMessage = { type: "init", buffer };
-			this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
-			this.playerWorker.postMessage({ type: "resolution" });
-			this.playerWorker.addEventListener("message", this.playerWorkerMessageListener.bind(this));
-		}
 		this.timer = new timer.Timer(this.audioContext);
 		this.timer.onTiming(this.timingListener.bind(this));
 		this.instruments = [];
@@ -51,6 +41,39 @@ export class Wasy {
 		}
 		this.paused = false;
 		this._emitter = createSignal<TimedEvent>();
+		if (buffer != null) {
+			this._initPlayerWorker(buffer);
+		}
+	}
+
+	load(buffer: ArrayBuffer) {
+		this.unload();
+		this._initPlayerWorker(buffer);
+	}
+
+	unload() {
+		this.timer.invalidate();
+		this.timer.tick = 0;
+		this.timer.oldTick = 0;
+		for (const instrument of this.instruments) {
+			instrument.pause();
+		}
+		if (this.playerWorker != null) {
+			this.playerWorker.terminate();
+			this.playerWorker = undefined;
+		}
+		this.paused = false;
+	}
+
+	private _initPlayerWorker(buffer: ArrayBuffer) {
+		this.playerWorker = new Worker(
+			new URL("./player/player-worker.js", import.meta.url),
+			{ type: "module" },
+		);
+		const initMessage = { type: "init", buffer };
+		this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
+		this.playerWorker.postMessage({ type: "resolution" });
+		this.playerWorker.addEventListener("message", this.playerWorkerMessageListener.bind(this));
 	}
 
 	play() {
@@ -73,11 +96,7 @@ export class Wasy {
 	}
 
 	destroy() {
-		this.timer.invalidate();
-		if (this.playerWorker != null) {
-			this.playerWorker.terminate();
-			this.playerWorker = undefined;
-		}
+		this.unload();
 		this._emitter.offAll();
 		for (const instrument of this.instruments) {
 			instrument.destroy();
