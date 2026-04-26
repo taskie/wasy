@@ -94,23 +94,24 @@ export interface Patch<_T> {
 }
 
 export class Instrument<T> {
-    patch: Patch<T>;
+    patch!: Patch<T>;
     notePool: NotePool<T>;
     private _expiredEmitter: Signal<ExpiredMessage<T>>;
     private _programChangeEmitter: Signal<midi.ProgramChangeEvent>;
 
     source: AudioNode;
-    _panner: PannerNode;
+    _panner: StereoPannerNode;
     _gain: GainNode;
 
-    volume: number;        //  7
-    panpot: number;        // 10
-    expression: number;    // 11
-    pitchBend: number;
-    pitchBendRange: number;
+    // Initialized via resetAllControl() called from the constructor.
+    volume!: number;        //  7
+    panpot!: number;        // 10
+    expression!: number;    // 11
+    pitchBend!: number;
+    pitchBendRange!: number;
 
-    dataEntry: number;
-    rpn: number;
+    dataEntry!: number;
+    rpn!: number;
 
     constructor(public audioContext: AudioContext, public destination: AudioNode) {
         this.notePool = new NotePool<T>();
@@ -118,7 +119,7 @@ export class Instrument<T> {
         this._expiredEmitter = createSignal<ExpiredMessage<T>>();
         this._programChangeEmitter = createSignal<midi.ProgramChangeEvent>();
 
-        this._panner = this.audioContext.createPanner();
+        this._panner = this.audioContext.createStereoPanner();
         this._gain = this.audioContext.createGain();
         this.source = this._panner;
         this._panner.connect(this._gain);
@@ -150,10 +151,8 @@ export class Instrument<T> {
 
     setPanpot(panpot: number) {
         this.panpot = panpot;
-        const value = (panpot - 64) * Math.PI / (64 * 2);
-        this._panner.positionX.value = Math.sin(value);
-        this._panner.positionY.value = 0;
-        this._panner.positionZ.value = -Math.cos(value);
+        // MIDI panpot 0-127 → StereoPanner pan -1..+1 (centered at 64).
+        this._panner.pan.value = (panpot - 64) / 64;
     }
 
     setVolume(volume: number, time: number) {

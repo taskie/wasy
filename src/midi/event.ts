@@ -67,14 +67,14 @@ export class PitchBendEvent extends ChannelEvent {
 }
 
 export class FxEvent extends Event {
-	get statusType() { return this.status; }
+	override get statusType() { return this.status; }
 }
 
 export class SystemExclusiveEvent extends FxEvent { }
 
 export class MetaEvent extends FxEvent {
 	static typeIndexEventMap: { [n: number]: typeof MetaEvent };
-	static create(dataView: DataView, tick: number, status: number): MetaEvent {
+	static override create(dataView: DataView, tick: number, status: number): MetaEvent {
 		if (!this.typeIndexEventMap) {
 			this.typeIndexEventMap = {
 				0x51: TempoMetaEvent,

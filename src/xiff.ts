@@ -7,7 +7,7 @@ export interface Config {
 }
 
 export class Chunk {
-	public children: Chunk[];
+	public children!: Chunk[];
 
 	constructor(
 		public dataView: DataView,

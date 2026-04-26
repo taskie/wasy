@@ -9,7 +9,7 @@ interface WorkerScope {
 const ctx = self as unknown as WorkerScope;
 
 class PlayerWorker {
-	player: player.Player;
+	player!: player.Player;
 	messageListener(event: MessageEvent) {
 		switch (event.data.type) {
 			case "init":

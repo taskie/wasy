@@ -30,22 +30,17 @@ describe("Event.create", () => {
         expect((event as NoteOffEvent).channel).toBe(1);
     });
 
-    it("converts NoteOn velocity=0 on channel 0 into NoteOff with status 0x80", () => {
-        const event = Event.create(dv(0x3c, 0x00), 0, 0x90);
-        expect(event).toBeInstanceOf(NoteOffEvent);
-        expect(event.status).toBe(0x80);
+    it("converts NoteOn velocity=0 into NoteOff and preserves channel", () => {
+        for (let ch = 0; ch < 16; ++ch) {
+            const event = Event.create(dv(0x3c, 0x00), 0, 0x90 | ch);
+            expect(event).toBeInstanceOf(NoteOffEvent);
+            expect(event.status).toBe(0x80 | ch);
+            expect((event as NoteOffEvent).channel).toBe(ch);
+        }
     });
 
     it("preserves NoteOn when velocity > 0", () => {
         const event = Event.create(dv(0x3c, 0x01), 0, 0x95);
-        expect(event).toBeInstanceOf(NoteOnEvent);
-    });
-
-    it("does NOT convert NoteOn velocity=0 on non-zero channels (current behavior)", () => {
-        // Bug: the velocity-0 → NoteOff coercion in Event.create checks
-        // status === 0x90 instead of (status & 0xF0) === 0x90, so it only
-        // fires on channel 0. Tracked in TODO.md.
-        const event = Event.create(dv(0x3c, 0x00), 0, 0x95);
         expect(event).toBeInstanceOf(NoteOnEvent);
     });
 
@@ -96,6 +91,26 @@ describe("MetaEvent.create", () => {
         expect(event).toBeInstanceOf(MetaEvent);
         expect(event).not.toBeInstanceOf(TempoMetaEvent);
         expect((event as MetaEvent).typeIndex).toBe(0x03);
+    });
+
+    it("decodes text payloads via UTF-8 by default", () => {
+        // 0x03 typeIndex (track name), 0x05 length VLQ, "hello"
+        const event = Event.create(
+            dv(0x03, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f),
+            0,
+            0xff,
+        ) as MetaEvent;
+        expect(event.text()).toBe("hello");
+    });
+
+    it("can decode shift_jis text when explicitly requested", () => {
+        // 0x03 typeIndex, 0x04 length VLQ, Shift_JIS "あい" = 82 A0 82 A2
+        const event = Event.create(
+            dv(0x03, 0x04, 0x82, 0xa0, 0x82, 0xa2),
+            0,
+            0xff,
+        ) as MetaEvent;
+        expect(event.text("shift_jis")).toBe("あい");
     });
 
     it("returns a TempoMetaEvent for type 0x51", () => {

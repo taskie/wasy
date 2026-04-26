@@ -3,8 +3,8 @@ import * as inst from "./midi/instrument.js";
 import { Monophony, Patch } from "./synth/patch.js";
 
 export class SimpleOscillatorMonophony extends Monophony {
-	oscillator: OscillatorNode;
-	gain: GainNode;
+	oscillator!: OscillatorNode;
+	gain!: GainNode;
 }
 
 export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
@@ -16,7 +16,7 @@ export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
 	) {
 		super(instrument, destination);
 	}
-	onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
+	override onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
 		// initialize
 		const monophony = new SimpleOscillatorMonophony();
 		const oscillator = this.audioContext.createOscillator();
@@ -41,20 +41,20 @@ export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
 
 		return monophony;
 	}
-	onNoteOff(monophony: SimpleOscillatorMonophony, time: number) {
+	override onNoteOff(monophony: SimpleOscillatorMonophony, time: number) {
 		monophony.oscillator.stop(time);
 		monophony.gain.gain.cancelScheduledValues(time);
 		monophony.gain.gain.setValueAtTime(0, time);
 	}
-	onExpired(monophony: SimpleOscillatorMonophony, time: number) {
+	override onExpired(monophony: SimpleOscillatorMonophony, time: number) {
 		this.onNoteOff(monophony, time);
 	}
 }
 
 export class NoiseMonophony extends Monophony {
-	source: AudioBufferSourceNode;
-	filter: BiquadFilterNode;
-	gain: GainNode;
+	source!: AudioBufferSourceNode;
+	filter!: BiquadFilterNode;
+	gain!: GainNode;
 }
 
 export class NoisePatch extends Patch<NoiseMonophony> {
@@ -73,7 +73,7 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 			NoisePatch.noiseBuffer = buf;
 		}
 	}
-	onNoteOn(event: midi.NoteOnEvent, time: number): NoiseMonophony {
+	override onNoteOn(event: midi.NoteOnEvent, time: number): NoiseMonophony {
 		// initialize
 		const monophony = new NoiseMonophony();
 		const source = this.audioContext.createBufferSource();
@@ -104,12 +104,12 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 
 		return monophony;
 	}
-	onNoteOff(monophony: NoiseMonophony, time: number) {
+	override onNoteOff(monophony: NoiseMonophony, time: number) {
 		monophony.source.stop(time);
 		monophony.gain.gain.cancelScheduledValues(time);
 		monophony.gain.gain.setValueAtTime(0, time);
 	}
-	onExpired(monophony: NoiseMonophony, time: number) {
+	override onExpired(monophony: NoiseMonophony, time: number) {
 		this.onNoteOff(monophony, time);
 	}
 }
@@ -125,7 +125,7 @@ export class GainedNoisePatch extends NoisePatch {
 		super(instrument, destination);
 	}
 
-	onNoteOn(event: midi.NoteOnEvent, time: number): NoiseMonophony {
+	override onNoteOn(event: midi.NoteOnEvent, time: number): NoiseMonophony {
 		const monophony = super.onNoteOn(event, time);
 		const filter = monophony.filter;
 		const gain = monophony.gain;
@@ -142,11 +142,11 @@ export class GainedNoisePatch extends NoisePatch {
 }
 
 export class OneShotNoisePatch extends GainedNoisePatch {
-	onNoteOff(_monophony: NoiseMonophony, _time: number) {
+	override onNoteOff(_monophony: NoiseMonophony, _time: number) {
 
 	}
 
-	onExpired(monophony: NoiseMonophony, time: number) {
+	override onExpired(monophony: NoiseMonophony, time: number) {
 		super.onExpired(monophony, time);
 		monophony.source.stop(time);
 		monophony.gain.gain.cancelScheduledValues(time);
@@ -165,7 +165,7 @@ export class GainedOscillatorPatch extends SimpleOscillatorPatch {
 		super(instrument, oscillatorType, destination);
 	}
 
-	onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
+	override onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
 		const monophony = super.onNoteOn(event, time);
 		const gain = monophony.gain;
 		const baseGain = gain.gain.value;
@@ -185,7 +185,7 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 		super(instrument, 1, 0, duration, oscillatorType, destination);
 	}
 
-	onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
+	override onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
 		const monophony = super.onNoteOn(event, time);
 		const oscillator = monophony.oscillator;
 		let frequency: number;
@@ -199,11 +199,11 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 		return monophony;
 	}
 
-	onNoteOff(_monophony: SimpleOscillatorMonophony, _time: number) {
+	override onNoteOff(_monophony: SimpleOscillatorMonophony, _time: number) {
 
 	}
 
-	onExpired(monophony: SimpleOscillatorMonophony, time: number) {
+	override onExpired(monophony: SimpleOscillatorMonophony, time: number) {
 		super.onExpired(monophony, time);
 		monophony.oscillator.stop(time);
 		monophony.gain.gain.cancelScheduledValues(time);
@@ -213,8 +213,8 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 
 export class DrumKitPatch extends Patch<Monophony> {
 	patchMap: { [n: number]: Patch<Monophony> };
-	leftPanpot: PannerNode;
-	rightPanpot: PannerNode;
+	leftPanpot: StereoPannerNode;
+	rightPanpot: StereoPannerNode;
 	gain: GainNode;
 
 	constructor(
@@ -229,20 +229,14 @@ export class DrumKitPatch extends Patch<Monophony> {
 		this.gain = ga;
 		this.gain.gain.value = 2;
 		ga.connect(ds);
-		// panner
-		const lp = this.audioContext.createPanner();
+		// panners (StereoPanner; pan -1..+1, MIDI panpot 32 → -0.5, 96 → +0.5)
+		const lp = this.audioContext.createStereoPanner();
 		this.leftPanpot = lp;
-		const lpValue = (32 - 64) * Math.PI / (64 * 2);
-		lp.positionX.value = Math.sin(lpValue);
-		lp.positionY.value = 0;
-		lp.positionZ.value = -Math.cos(lpValue);
+		lp.pan.value = (32 - 64) / 64;
 		lp.connect(ga);
-		const rp = this.audioContext.createPanner();
+		const rp = this.audioContext.createStereoPanner();
 		this.rightPanpot = rp;
-		const rpValue = (96 - 64) * Math.PI / (64 * 2);
-		rp.positionX.value = Math.sin(rpValue);
-		rp.positionY.value = 0;
-		rp.positionZ.value = -Math.cos(rpValue);
+		rp.pan.value = (96 - 64) / 64;
 		rp.connect(ga);
 		// assign
 		this.patchMap = {
@@ -267,7 +261,7 @@ export class DrumKitPatch extends Patch<Monophony> {
 		};
 	}
 
-	onNoteOn(event: midi.NoteOnEvent, time: number): Monophony {
+	override onNoteOn(event: midi.NoteOnEvent, time: number): Monophony {
 		let index = event.noteNumber;
 		if (!(index in this.patchMap)) {
 			index = 0;
@@ -285,11 +279,11 @@ export class DrumKitPatch extends Patch<Monophony> {
 		return monophony;
 	}
 
-	onNoteOff(monophony: Monophony, time: number) {
+	override onNoteOff(monophony: Monophony, time: number) {
 		monophony.parentPatch.onNoteOff(monophony, time);
 	}
 
-	onExpired(monophony: Monophony, time: number) {
+	override onExpired(monophony: Monophony, time: number) {
 		monophony.parentPatch.onExpired(monophony, time);
 	}
 }

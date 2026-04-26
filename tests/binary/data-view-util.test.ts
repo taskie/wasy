@@ -27,6 +27,12 @@ describe("dataViewGetUint", () => {
         expect(dataViewGetUint(dv(0xab), 0, false, 1)).toBe(0xab);
         expect(dataViewGetUint(dv(0xab), 0, true, 1)).toBe(0xab);
     });
+
+    it("does not overflow on 4-byte values (would wrap to negative with <<)", () => {
+        expect(dataViewGetUint(dv(0xff, 0xff, 0xff, 0xff), 0, false, 4)).toBe(0xffffffff);
+        expect(dataViewGetUint(dv(0xff, 0xff, 0xff, 0xff), 0, true, 4)).toBe(0xffffffff);
+        expect(dataViewGetUint(dv(0x80, 0x00, 0x00, 0x00), 0, false, 4)).toBe(0x80000000);
+    });
 });
 
 describe("dataViewGetUintVariable", () => {

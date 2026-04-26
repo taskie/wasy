@@ -1,11 +1,11 @@
 import { createSignal, type Signal } from "../signal.js";
 
 export class TimeStamp {
-	tick: number;
-	oldTick: number;
-	currentTime: number;
-	delayInSeconds: number;
-	ticksPerSecond: number;
+	tick!: number;
+	oldTick!: number;
+	currentTime!: number;
+	delayInSeconds!: number;
+	ticksPerSecond!: number;
 
 	accurateTime(tick: number) {
 		const diff = (tick - this.oldTick) / this.ticksPerSecond;
@@ -14,11 +14,11 @@ export class TimeStamp {
 }
 
 export class Timer {
-	tick: number;
-	oldTick: number;
-	currentTime: number;
+	tick = 0;
+	oldTick = 0;
+	currentTime = 0;
 	delayInSeconds: number;
-	secondsPerBeat: number;
+	secondsPerBeat!: number;
 
 	timerId: ReturnType<typeof setInterval> | null = null;
 	_emitter: Signal<TimeStamp>;

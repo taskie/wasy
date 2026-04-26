@@ -3,9 +3,9 @@ import * as dvu from "./binary/data-view-util.js";
 import * as midi from "./midi/event.js";
 
 export class Header {
-	format: number;
-	numberOfTracks: number;
-	resolution: number;
+	format!: number;
+	numberOfTracks!: number;
+	resolution!: number;
 	constructor(public dataView: DataView) { }
 	load() {
 		let pos = 0;
@@ -51,7 +51,7 @@ export class EventBuilder {
 }
 
 export class Track {
-	public events: midi.Event[];
+	public events!: midi.Event[];
 	constructor(public dataView: DataView) { }
 	load() {
 		let pos = 0;
@@ -81,8 +81,8 @@ export class Track {
 }
 
 export class Song {
-	public header: Header;
-	public tracks: Track[];
+	public header!: Header;
+	public tracks!: Track[];
 
 	constructor(public buffer: ArrayBuffer) {
 

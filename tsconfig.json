@@ -10,7 +10,9 @@
         "declarationMap": true,
         "sourceMap": true,
         "strict": true,
-        "strictPropertyInitialization": false,
+        "noImplicitOverride": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true
@@ -19,8 +21,6 @@
         "./src/**/*.ts"
     ],
     "exclude": [
-        "node_modules",
-        "./src/**/_*.ts",
-        "./src/**/_*/*.ts"
+        "node_modules"
     ]
 }

@@ -3,9 +3,9 @@ import * as tuning from "../player/tuning.js";
 import * as inst from "../midi/instrument.js";
 
 export class Monophony {
-	parentPatch: Patch<Monophony>;
-	managedNodes: AudioNode[];
-	detunableNodes: AudioNode[];
+	parentPatch!: Patch<Monophony>;
+	managedNodes!: AudioNode[];
+	detunableNodes!: AudioNode[];
 }
 
 export class Patch<T extends Monophony> implements inst.Patch<T> {
