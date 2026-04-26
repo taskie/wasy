@@ -1,6 +1,3 @@
-import * as midi from "./event";
-import Signal from "../signal";
-
 export const instrumentPatchs = [
     "Bright Piano",
     "Electric Grand Piano",
@@ -128,10 +125,10 @@ export const instrumentPatchs = [
     "Telephone Ring",
     "Helicopter",
     "Applause",
-    "Gunshot"
-]
+    "Gunshot",
+];
 
-export const percussionKeyMap = {
+export const percussionKeyMap: { [n: number]: string } = {
     35: "Bass Drum 2",
     36: "Bass Drum 1",
     37: "Side Stick",
@@ -178,5 +175,5 @@ export const percussionKeyMap = {
     78: "Mute Cuica",
     79: "Open Cuica",
     80: "Mute Triangle",
-    81: "Open Triangle"
-}
+    81: "Open Triangle",
+};

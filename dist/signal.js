@@ -1,6 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-class Signal {
+export default class Signal {
+    listeners;
     constructor() {
         this.listeners = [];
     }
@@ -22,5 +21,4 @@ class Signal {
         }
     }
 }
-exports.default = Signal;
 //# sourceMappingURL=signal.js.map

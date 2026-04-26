@@ -1,13 +1,15 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const midi = require("./event");
-const signal_1 = require("../signal");
-class NotePool {
+import * as midi from "./event.js";
+import Signal from "../signal.js";
+export class NotePool {
+    polyphony;
+    _noteStore;
+    _noteNumberQueue;
+    _expiredEmitter;
     constructor(polyphony = 16) {
         this.polyphony = polyphony;
         this._noteStore = {};
         this._noteNumberQueue = [];
-        this._expiredEmitter = new signal_1.default();
+        this._expiredEmitter = new Signal();
     }
     onExpired(listener) {
         this._expiredEmitter.on(listener);
@@ -18,10 +20,10 @@ class NotePool {
     register(noteNumber, data, time) {
         // check store
         {
-            let oldData = this._noteStore[noteNumber];
+            const oldData = this._noteStore[noteNumber];
             if (oldData != null) {
                 this._expiredEmitter.emit({ data: oldData, time });
-                let oldIndex = this._noteNumberQueue.indexOf(noteNumber);
+                const oldIndex = this._noteNumberQueue.indexOf(noteNumber);
                 if (oldIndex !== -1) {
                     this._noteNumberQueue.splice(oldIndex, 1);
                 }
@@ -32,25 +34,31 @@ class NotePool {
         {
             this._noteNumberQueue.push(noteNumber);
             while (this._noteNumberQueue.length > this.polyphony) {
-                let oldNoteNumber = this._noteNumberQueue.shift();
-                this._expiredEmitter.emit({ data: this._noteStore[oldNoteNumber], time });
-                this._noteStore[oldNoteNumber] = null;
+                const oldNoteNumber = this._noteNumberQueue.shift();
+                const oldData = this._noteStore[oldNoteNumber];
+                if (oldData != null) {
+                    this._expiredEmitter.emit({ data: oldData, time });
+                }
+                delete this._noteStore[oldNoteNumber];
             }
         }
     }
     unregister(noteNumber, time) {
-        let oldData = this._noteStore[noteNumber];
+        const oldData = this._noteStore[noteNumber];
         if (oldData != null) {
             this._expiredEmitter.emit({ data: oldData, time });
-            let oldIndex = this._noteNumberQueue.indexOf(noteNumber);
+            const oldIndex = this._noteNumberQueue.indexOf(noteNumber);
             if (oldIndex !== -1) {
                 this._noteNumberQueue.splice(oldIndex, 1);
             }
         }
     }
     unregisterAll(time = 0) {
-        for (let noteNumber of this._noteNumberQueue) {
-            this._expiredEmitter.emit({ data: this._noteStore[noteNumber], time });
+        for (const noteNumber of this._noteNumberQueue) {
+            const data = this._noteStore[noteNumber];
+            if (data != null) {
+                this._expiredEmitter.emit({ data, time });
+            }
         }
         this._noteStore = {};
         this._noteNumberQueue = [];
@@ -65,15 +73,30 @@ class NotePool {
         return this._noteNumberQueue;
     }
 }
-exports.NotePool = NotePool;
-class Instrument {
+export class Instrument {
+    audioContext;
+    destination;
+    patch;
+    notePool;
+    _expiredEmitter;
+    _programChangeEmitter;
+    source;
+    _panner;
+    _gain;
+    volume; //  7
+    panpot; // 10
+    expression; // 11
+    pitchBend;
+    pitchBendRange;
+    dataEntry;
+    rpn;
     constructor(audioContext, destination) {
         this.audioContext = audioContext;
         this.destination = destination;
         this.notePool = new NotePool();
         this.notePool.onExpired(this._expiredListener.bind(this));
-        this._expiredEmitter = new signal_1.default();
-        this._programChangeEmitter = new signal_1.default();
+        this._expiredEmitter = new Signal();
+        this._programChangeEmitter = new Signal();
         this._panner = this.audioContext.createPanner();
         this._gain = this.audioContext.createGain();
         this.source = this._panner;
@@ -100,8 +123,10 @@ class Instrument {
     }
     setPanpot(panpot) {
         this.panpot = panpot;
-        var value = (panpot - 64) * Math.PI / (64 * 2);
-        this._panner.setPosition(Math.sin(value), 0, -Math.cos(value));
+        const value = (panpot - 64) * Math.PI / (64 * 2);
+        this._panner.positionX.value = Math.sin(value);
+        this._panner.positionY.value = 0;
+        this._panner.positionZ.value = -Math.cos(value);
     }
     setVolume(volume, time) {
         this.volume = volume;
@@ -145,36 +170,36 @@ class Instrument {
     receiveEvent(event, time) {
         if (event instanceof midi.ControlChangeEvent) {
             switch (event.controller) {
-                case 7:// Volume
+                case 7: // Volume
                     this.setVolume(event.value, time);
                     break;
-                case 10:// Panpot
+                case 10: // Panpot
                     this.setPanpot(event.value);
                     break;
-                case 11:// Expression
+                case 11: // Expression
                     this.setExpression(event.value, time);
                     break;
-                case 6:// DataEntryMSB
+                case 6: // DataEntryMSB
                     this.dataEntry &= 0b11111110000000;
                     this.dataEntry |= event.value;
                     this.receiveRPN(this.rpn, this.dataEntry, time);
                     break;
-                case 38:// DataEntryLSB
+                case 38: // DataEntryLSB
                     this.dataEntry &= 0b00000001111111;
                     this.dataEntry |= event.value << 7;
                     break;
-                case 100:// RPN LSB
+                case 100: // RPN LSB
                     this.rpn &= 0b11111110000000;
                     this.rpn |= event.value;
                     break;
-                case 101:// RPN MSB
+                case 101: // RPN MSB
                     this.rpn &= 0b00000001111111;
                     this.rpn |= event.value << 7;
                     break;
-                case 120:// AllSoundOff
+                case 120: // AllSoundOff
                     this.notePool.unregisterAll();
                     break;
-                case 121:// ResetAllControl
+                case 121: // ResetAllControl
                     this.resetAllControl();
                     break;
                 default:
@@ -195,7 +220,7 @@ class Instrument {
     }
     receiveRPN(rpn, data, time) {
         switch (rpn) {
-            case 0:// pitch bend range
+            case 0: // pitch bend range
                 this.pitchBendRange = data;
                 break;
             default:
@@ -203,5 +228,4 @@ class Instrument {
         }
     }
 }
-exports.Instrument = Instrument;
 //# sourceMappingURL=instrument.js.map

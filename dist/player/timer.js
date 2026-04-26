@@ -1,26 +1,38 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const signal_1 = require("../signal");
-class TimeStamp {
+import Signal from "../signal.js";
+export class TimeStamp {
+    tick;
+    oldTick;
+    currentTime;
+    delayInSeconds;
+    ticksPerSecond;
     accurateTime(tick) {
-        let diff = (tick - this.oldTick) / this.ticksPerSecond;
+        const diff = (tick - this.oldTick) / this.ticksPerSecond;
         return this.currentTime + this.delayInSeconds + diff;
     }
 }
-exports.TimeStamp = TimeStamp;
-class Timer {
+export class Timer {
+    audioContext;
+    resolution;
+    durationInSeconds;
+    tick;
+    oldTick;
+    currentTime;
+    delayInSeconds;
+    secondsPerBeat;
+    timerId = null;
+    _emitter;
+    get ticksPerSecond() { return this.resolution / this.secondsPerBeat; }
+    set ticksPerSecond(tps) { this.secondsPerBeat = this.resolution / tps; }
+    get beatsPerMinute() { return 60 / this.secondsPerBeat; }
+    set beatsPerMinute(bpm) { this.secondsPerBeat = 60 / bpm; }
     constructor(audioContext, resolution = 480, durationInSeconds = 0.2) {
         this.audioContext = audioContext;
         this.resolution = resolution;
         this.durationInSeconds = durationInSeconds;
         this.beatsPerMinute = 120;
         this.delayInSeconds = 0.2;
-        this._emitter = new signal_1.default();
+        this._emitter = new Signal();
     }
-    get ticksPerSecond() { return this.resolution / this.secondsPerBeat; }
-    set ticksPerSecond(tps) { this.secondsPerBeat = this.resolution / tps; }
-    get beatsPerMinute() { return 60 / this.secondsPerBeat; }
-    set beatsPerMinute(bpm) { this.secondsPerBeat = 60 / bpm; }
     start() {
         this.currentTime = this.audioContext.currentTime;
         this.oldTick = 0;
@@ -41,7 +53,7 @@ class Timer {
         this._emitter.emit(this.createTimeStamp());
     }
     createTimeStamp() {
-        let timeStamp = new TimeStamp();
+        const timeStamp = new TimeStamp();
         timeStamp.tick = this.tick;
         timeStamp.oldTick = this.oldTick;
         timeStamp.currentTime = this.currentTime;
@@ -60,5 +72,4 @@ class Timer {
         this.timerId = setInterval(this.timing.bind(this), this.durationInSeconds * 1000);
     }
 }
-exports.Timer = Timer;
 //# sourceMappingURL=timer.js.map

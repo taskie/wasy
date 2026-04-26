@@ -1,12 +1,9 @@
-import * as midi from "./midi/event";
-import * as timer from "./player/timer";
-import * as player from "./player";
-import * as tuning from "./player/tuning";
-import Signal from "./signal";
-import * as gm from "./midi/gm";
-import * as inst from "./midi/instrument";
-import { PatchGenerator } from "./synth";
-import { Monophony } from "./synth/patch";
+import * as midi from "./midi/event.js";
+import * as timer from "./player/timer.js";
+import Signal from "./signal.js";
+import * as inst from "./midi/instrument.js";
+import { PatchGenerator } from "./synth.js";
+import { Monophony } from "./synth/patch.js";
 
 export interface TimedEvent {
 	timeStamp: timer.TimeStamp;
@@ -18,15 +15,18 @@ export class Wasy {
 	instruments: inst.Instrument<Monophony>[];
 	gain: GainNode;
 	dynamicsCompressor: DynamicsCompressorNode;
-	playerWorker: Worker;
+	playerWorker?: Worker;
 	patchGenerator: PatchGenerator;
 	paused: boolean;
 	private _emitter: Signal<TimedEvent>;
 
 	constructor(public audioContext: AudioContext, destination: AudioNode, buffer?: ArrayBuffer) {
 		if (buffer != null) {
-			this.playerWorker = new Worker("./player-worker.js");
-			let initMessage = { type: "init", buffer };
+			this.playerWorker = new Worker(
+				new URL("./player/player-worker.js", import.meta.url),
+				{ type: "module" },
+			);
+			const initMessage = { type: "init", buffer };
 			this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
 			this.playerWorker.postMessage({ type: "resolution" });
 			this.playerWorker.addEventListener("message", this.playerWorkerMessageListener.bind(this));
@@ -41,11 +41,11 @@ export class Wasy {
 		this.gain.connect(this.dynamicsCompressor);
 		this.dynamicsCompressor.connect(destination);
 		for (let i = 0; i < 16; ++i) {
-			let instrument = new inst.Instrument<Monophony>(this.audioContext, this.gain);
+			const instrument = new inst.Instrument<Monophony>(this.audioContext, this.gain);
 			instrument.patch = this.patchGenerator.generate(instrument, 0, i === 9);
 			this.instruments[i] = instrument;
 			instrument.onExpired((data: inst.ExpiredMessage<Monophony>) => {
-				data.data.parentPatch.onExpired(<any> data.data, data.time);
+				data.data.parentPatch.onExpired(data.data, data.time);
 			});
 			instrument.onProgramChange((event: midi.ProgramChangeEvent) => {
 				instrument.patch = this.patchGenerator.generate(instrument, event.program, i === 9);
@@ -62,12 +62,12 @@ export class Wasy {
 	pause() {
 		if (this.paused) return;
 		this.timer.invalidate();
-		for (let instrument of this.instruments) {
+		for (const instrument of this.instruments) {
 			instrument.pause();
 		}
 		this.paused = true;
 	}
-	
+
 	resume() {
 		if (!this.paused) return;
 		this.timer.resume();
@@ -76,9 +76,9 @@ export class Wasy {
 
 	destroy() {
 		this.timer.invalidate();
-		this.playerWorker = null;
+		this.playerWorker = undefined;
 		this._emitter.offAll();
-		for (let instrument of this.instruments) {
+		for (const instrument of this.instruments) {
 			instrument.destroy();
 		}
 	}
@@ -90,14 +90,14 @@ export class Wasy {
 				break;
 			case "read":
 				if (this.paused) break;
-				let newEventsStore: midi.Event[][] = event.data.newEventsStore;
-				let timeStamp: timer.TimeStamp = event.data.timeStamp;
-				(<any> timeStamp).__proto__ = timer.TimeStamp.prototype;
+				const newEventsStore: midi.Event[][] = event.data.newEventsStore;
+				const timeStamp: timer.TimeStamp = event.data.timeStamp;
+				Object.setPrototypeOf(timeStamp, timer.TimeStamp.prototype);
 				newEventsStore.forEach((newEvents, channelNumber) => {
-					for (let newEvent of newEvents) {
-						let event = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
-						this._emitter.emit({ timeStamp, midiEvent: event })
-						let time = timeStamp.accurateTime(event.tick);
+					for (const newEvent of newEvents) {
+						const event = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
+						this._emitter.emit({ timeStamp, midiEvent: event });
+						const time = timeStamp.accurateTime(event.tick);
 						this.instruments[channelNumber].receiveEvent(event, time);
 						if (channelNumber === 0) {
 							if (event instanceof midi.TempoMetaEvent) {

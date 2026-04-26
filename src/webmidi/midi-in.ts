@@ -1,6 +1,6 @@
-import * as midi from "../midi/event";
-import * as dvu from "../binary/data-view-util";
-import Signal from "../signal";
+import * as midi from "../midi/event.js";
+import * as dvu from "../binary/data-view-util.js";
+import Signal from "../signal.js";
 
 export class MIDIIn {
 	private _emitter: Signal<midi.Event>;
@@ -24,12 +24,12 @@ export class MIDIIn {
 export class WebMIDIIn extends MIDIIn {
 	constructor() {
 		super();
-		if (!(<any> navigator).requestMIDIAccess) { return; }
-		(<any> navigator).requestMIDIAccess().then((midiAccess: any) => {
-			const it = midiAccess.inputs.values();
-			for (let input = it.next(); !input.done; input = it.next()) {
-				console.log(input.value);
-				input.value.onmidimessage = (event: any) => {
+		if (typeof navigator.requestMIDIAccess !== "function") { return; }
+		navigator.requestMIDIAccess().then((midiAccess) => {
+			for (const input of midiAccess.inputs.values()) {
+				console.log(input);
+				input.onmidimessage = (event) => {
+					if (!event.data) return;
 					const dataView = new DataView(event.data.buffer);
 					const status = dataView.getUint8(0);
 					const subDataView = dvu.dataViewGetSubDataView(dataView, 1);
@@ -37,9 +37,9 @@ export class WebMIDIIn extends MIDIIn {
 					this.emit(midiEvent);
 				};
 			}
-		}, (reason: any) => {
-				console.log(reason);
-			});
+		}, (reason) => {
+			console.log(reason);
+		});
 	}
 }
 
@@ -49,7 +49,7 @@ export class WebMidiLinkIn extends MIDIIn {
 		window.addEventListener("message", (event) => {
 			const elems: string[] = event.data.split(",");
 			if (elems[0] === "midi") {
-				const ints = elems.slice(1).map(x => parseInt(x, 16));
+				const ints = elems.slice(1).map((x) => parseInt(x, 16));
 				const bytes = new Uint8Array(ints);
 				const dataView = new DataView(bytes.buffer);
 				const status = dataView.getUint8(0);

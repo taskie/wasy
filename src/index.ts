@@ -1,9 +1,9 @@
-import * as wasy from "./wasy";
-import * as midiIn from "./webmidi/midi-in";
-import * as midi from "./midi/event";
+import * as wasy from "./wasy.js";
+import * as midiIn from "./webmidi/midi-in.js";
+import * as midi from "./midi/event.js";
 
-export { 
-    wasy, 
-    midiIn, 
-    midi
- };
+export {
+    wasy,
+    midiIn,
+    midi,
+};

@@ -5,14 +5,15 @@ export interface Config {
 }
 export declare class Chunk {
     dataView: DataView;
-    name: string;
+    name: string | null;
     formType: string | null;
     config: Config;
     children: Chunk[];
-    constructor(dataView: DataView, name: string, formType: string | null, config: Config);
+    constructor(dataView: DataView, name: string | null, formType: string | null, config: Config);
     load(): void;
 }
-export declare let configs: {
+export declare const configs: {
     [key: string]: Config;
 };
-export declare let load: (buffer: ArrayBuffer, config: Config) => Chunk;
+export declare const load: (buffer: ArrayBuffer, config: Config) => Chunk;
+//# sourceMappingURL=xiff.d.ts.map

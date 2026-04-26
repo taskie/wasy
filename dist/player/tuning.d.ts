@@ -7,3 +7,4 @@ export declare class EqualTemperamentTuning implements Tuning {
     constructor(_frequencyOf69?: number);
     frequency(noteNumber: number): number;
 }
+//# sourceMappingURL=tuning.d.ts.map

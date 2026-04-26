@@ -1,4 +1,4 @@
-import Signal from "../signal";
+import Signal from "../signal.js";
 export declare class TimeStamp {
     tick: number;
     oldTick: number;
@@ -16,10 +16,12 @@ export declare class Timer {
     currentTime: number;
     delayInSeconds: number;
     secondsPerBeat: number;
-    timerId: any;
+    timerId: ReturnType<typeof setInterval> | null;
     _emitter: Signal<TimeStamp>;
-    ticksPerSecond: number;
-    beatsPerMinute: number;
+    get ticksPerSecond(): number;
+    set ticksPerSecond(tps: number);
+    get beatsPerMinute(): number;
+    set beatsPerMinute(bpm: number);
     constructor(audioContext: AudioContext, resolution?: number, durationInSeconds?: number);
     start(): void;
     onTiming(listener: (timeStamp: TimeStamp) => void): void;
@@ -29,3 +31,4 @@ export declare class Timer {
     invalidate(): void;
     resume(): void;
 }
+//# sourceMappingURL=timer.d.ts.map

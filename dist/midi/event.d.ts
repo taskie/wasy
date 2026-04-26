@@ -8,35 +8,35 @@ export declare class Event {
         [n: number]: typeof Event;
     };
     static create(dataView: DataView, tick: number, status: number): Event;
-    readonly statusType: number;
+    get statusType(): number;
 }
 export declare class ChannelEvent extends Event {
-    readonly channel: number;
+    get channel(): number;
 }
 export declare class NoteOffEvent extends ChannelEvent {
-    readonly noteNumber: number;
-    readonly velocity: number;
+    get noteNumber(): number;
+    get velocity(): number;
 }
 export declare class NoteOnEvent extends ChannelEvent {
-    readonly noteNumber: number;
-    readonly velocity: number;
+    get noteNumber(): number;
+    get velocity(): number;
 }
 export declare class PolyphonicKeyPressureEvent extends ChannelEvent {
 }
 export declare class ControlChangeEvent extends ChannelEvent {
-    readonly controller: number;
-    readonly value: number;
+    get controller(): number;
+    get value(): number;
 }
 export declare class ProgramChangeEvent extends ChannelEvent {
-    readonly program: number;
+    get program(): number;
 }
 export declare class ChannelPressureEvent extends ChannelEvent {
 }
 export declare class PitchBendEvent extends ChannelEvent {
-    readonly value: number;
+    get value(): number;
 }
 export declare class FxEvent extends Event {
-    readonly statusType: number;
+    get statusType(): number;
 }
 export declare class SystemExclusiveEvent extends FxEvent {
 }
@@ -45,11 +45,12 @@ export declare class MetaEvent extends FxEvent {
         [n: number]: typeof MetaEvent;
     };
     static create(dataView: DataView, tick: number, status: number): MetaEvent;
-    readonly typeIndex: number;
-    readonly data: DataView;
+    get typeIndex(): number;
+    get data(): DataView<ArrayBufferLike>;
 }
 export declare class TempoMetaEvent extends MetaEvent {
-    readonly rawTempo: number;
-    readonly secondsPerBeat: number;
-    readonly beatsPerMinute: number;
+    get rawTempo(): number;
+    get secondsPerBeat(): number;
+    get beatsPerMinute(): number;
 }
+//# sourceMappingURL=event.d.ts.map

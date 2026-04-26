@@ -1,4 +1,4 @@
-import * as midi from "./midi/event";
+import * as midi from "./midi/event.js";
 export declare class Header {
     dataView: DataView;
     format: number;
@@ -25,3 +25,4 @@ export declare class Song {
     constructor(buffer: ArrayBuffer);
     load(): void;
 }
+//# sourceMappingURL=smf.d.ts.map

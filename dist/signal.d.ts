@@ -6,3 +6,4 @@ export default class Signal<T> {
     offAll(): void;
     emit(data: T): void;
 }
+//# sourceMappingURL=signal.d.ts.map

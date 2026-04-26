@@ -1,23 +1,30 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const midi = require("./midi/event");
-const timer = require("./player/timer");
-const signal_1 = require("./signal");
-const inst = require("./midi/instrument");
-const synth_1 = require("./synth");
-class Wasy {
+import * as midi from "./midi/event.js";
+import * as timer from "./player/timer.js";
+import Signal from "./signal.js";
+import * as inst from "./midi/instrument.js";
+import { PatchGenerator } from "./synth.js";
+export class Wasy {
+    audioContext;
+    timer;
+    instruments;
+    gain;
+    dynamicsCompressor;
+    playerWorker;
+    patchGenerator;
+    paused;
+    _emitter;
     constructor(audioContext, destination, buffer) {
         this.audioContext = audioContext;
         if (buffer != null) {
-            this.playerWorker = new Worker("./player-worker.js");
-            let initMessage = { type: "init", buffer };
+            this.playerWorker = new Worker(new URL("./player/player-worker.js", import.meta.url), { type: "module" });
+            const initMessage = { type: "init", buffer };
             this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
             this.playerWorker.postMessage({ type: "resolution" });
             this.playerWorker.addEventListener("message", this.playerWorkerMessageListener.bind(this));
         }
         this.timer = new timer.Timer(this.audioContext);
         this.timer.onTiming(this.timingListener.bind(this));
-        this.patchGenerator = new synth_1.PatchGenerator();
+        this.patchGenerator = new PatchGenerator();
         this.instruments = [];
         this.gain = this.audioContext.createGain();
         this.gain.gain.value = 0.1;
@@ -25,7 +32,7 @@ class Wasy {
         this.gain.connect(this.dynamicsCompressor);
         this.dynamicsCompressor.connect(destination);
         for (let i = 0; i < 16; ++i) {
-            let instrument = new inst.Instrument(this.audioContext, this.gain);
+            const instrument = new inst.Instrument(this.audioContext, this.gain);
             instrument.patch = this.patchGenerator.generate(instrument, 0, i === 9);
             this.instruments[i] = instrument;
             instrument.onExpired((data) => {
@@ -36,7 +43,7 @@ class Wasy {
             });
         }
         this.paused = false;
-        this._emitter = new signal_1.default();
+        this._emitter = new Signal();
     }
     play() {
         this.timer.start();
@@ -45,7 +52,7 @@ class Wasy {
         if (this.paused)
             return;
         this.timer.invalidate();
-        for (let instrument of this.instruments) {
+        for (const instrument of this.instruments) {
             instrument.pause();
         }
         this.paused = true;
@@ -58,9 +65,9 @@ class Wasy {
     }
     destroy() {
         this.timer.invalidate();
-        this.playerWorker = null;
+        this.playerWorker = undefined;
         this._emitter.offAll();
-        for (let instrument of this.instruments) {
+        for (const instrument of this.instruments) {
             instrument.destroy();
         }
     }
@@ -72,14 +79,14 @@ class Wasy {
             case "read":
                 if (this.paused)
                     break;
-                let newEventsStore = event.data.newEventsStore;
-                let timeStamp = event.data.timeStamp;
-                timeStamp.__proto__ = timer.TimeStamp.prototype;
+                const newEventsStore = event.data.newEventsStore;
+                const timeStamp = event.data.timeStamp;
+                Object.setPrototypeOf(timeStamp, timer.TimeStamp.prototype);
                 newEventsStore.forEach((newEvents, channelNumber) => {
-                    for (let newEvent of newEvents) {
-                        let event = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
+                    for (const newEvent of newEvents) {
+                        const event = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
                         this._emitter.emit({ timeStamp, midiEvent: event });
-                        let time = timeStamp.accurateTime(event.tick);
+                        const time = timeStamp.accurateTime(event.tick);
                         this.instruments[channelNumber].receiveEvent(event, time);
                         if (channelNumber === 0) {
                             if (event instanceof midi.TempoMetaEvent) {
@@ -119,5 +126,4 @@ class Wasy {
         }
     }
 }
-exports.Wasy = Wasy;
 //# sourceMappingURL=wasy.js.map

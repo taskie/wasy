@@ -1,5 +1,5 @@
-import * as midi from "./event";
-import Signal from "../signal";
+import * as midi from "./event.js";
+import Signal from "../signal.js";
 export interface ExpiredMessage<T> {
     data: T;
     time: number;
@@ -7,7 +7,7 @@ export interface ExpiredMessage<T> {
 export declare class NotePool<T> {
     polyphony: number;
     _noteStore: {
-        [noteNumber: number]: T;
+        [noteNumber: number]: T | undefined;
     };
     _noteNumberQueue: number[];
     _expiredEmitter: Signal<ExpiredMessage<T>>;
@@ -17,11 +17,11 @@ export declare class NotePool<T> {
     register(noteNumber: number, data: T, time: number): void;
     unregister(noteNumber: number, time: number): void;
     unregisterAll(time?: number): void;
-    find(noteNumber: number): T;
-    readonly noteStore: {
-        [noteNumber: number]: T;
+    find(noteNumber: number): T | undefined;
+    get noteStore(): {
+        [noteNumber: number]: T | undefined;
     };
-    readonly noteNumberQueue: number[];
+    get noteNumberQueue(): number[];
 }
 export interface Patch<T> {
     receiveEvent(event: midi.Event, time: number): void;
@@ -50,18 +50,20 @@ export declare class Instrument<T> {
     setPanpot(panpot: number): void;
     setVolume(volume: number, time: number): void;
     setExpression(expression: number, time: number): void;
-    detune: number;
+    set detune(detune: number);
+    get detune(): number;
     registerNote(noteNumber: number, data: T, time: number): void;
-    findNote(noteNumber: number): T;
+    findNote(noteNumber: number): T | undefined;
     expireNote(noteNumber: number, time: number): void;
-    readonly noteStore: {
-        [noteNumber: number]: T;
+    get noteStore(): {
+        [noteNumber: number]: T | undefined;
     };
     onExpired(listener: (data: ExpiredMessage<T>) => void): void;
     offExpired(listener: (data: ExpiredMessage<T>) => void): void;
-    private _expiredListener(message);
+    private _expiredListener;
     onProgramChange(listener: (event: midi.ProgramChangeEvent) => void): void;
     offProgramChange(listener: (event: midi.ProgramChangeEvent) => void): void;
     receiveEvent(event: midi.Event, time: number): void;
     receiveRPN(rpn: number, data: number, time: number): void;
 }
+//# sourceMappingURL=instrument.d.ts.map

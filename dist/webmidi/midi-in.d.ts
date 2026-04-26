@@ -1,4 +1,4 @@
-import * as midi from "../midi/event";
+import * as midi from "../midi/event.js";
 export declare class MIDIIn {
     private _emitter;
     constructor();
@@ -13,3 +13,4 @@ export declare class WebMIDIIn extends MIDIIn {
 export declare class WebMidiLinkIn extends MIDIIn {
     constructor();
 }
+//# sourceMappingURL=midi-in.d.ts.map

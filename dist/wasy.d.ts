@@ -1,8 +1,8 @@
-import * as midi from "./midi/event";
-import * as timer from "./player/timer";
-import * as inst from "./midi/instrument";
-import { PatchGenerator } from "./synth";
-import { Monophony } from "./synth/patch";
+import * as midi from "./midi/event.js";
+import * as timer from "./player/timer.js";
+import * as inst from "./midi/instrument.js";
+import { PatchGenerator } from "./synth.js";
+import { Monophony } from "./synth/patch.js";
 export interface TimedEvent {
     timeStamp: timer.TimeStamp;
     midiEvent: midi.Event;
@@ -13,7 +13,7 @@ export declare class Wasy {
     instruments: inst.Instrument<Monophony>[];
     gain: GainNode;
     dynamicsCompressor: DynamicsCompressorNode;
-    playerWorker: Worker;
+    playerWorker?: Worker;
     patchGenerator: PatchGenerator;
     paused: boolean;
     private _emitter;
@@ -28,3 +28,4 @@ export declare class Wasy {
     offTimedEvent(listener: (event: TimedEvent) => void): void;
     timingListener(timeStamp: timer.TimeStamp): void;
 }
+//# sourceMappingURL=wasy.d.ts.map

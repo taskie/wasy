@@ -1,14 +1,16 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const xiff = require("./xiff");
-const dvu = require("./binary/data-view-util");
-const midi = require("./midi/event");
-class Header {
+import * as xiff from "./xiff.js";
+import * as dvu from "./binary/data-view-util.js";
+import * as midi from "./midi/event.js";
+export class Header {
+    dataView;
+    format;
+    numberOfTracks;
+    resolution;
     constructor(dataView) {
         this.dataView = dataView;
     }
     load() {
-        var pos = 0;
+        let pos = 0;
         this.format = this.dataView.getUint16(pos, false);
         pos += 2;
         this.numberOfTracks = this.dataView.getUint16(pos, false);
@@ -16,13 +18,13 @@ class Header {
         this.resolution = this.dataView.getUint16(pos, false);
     }
 }
-exports.Header = Header;
-class EventBuilder {
+export class EventBuilder {
+    dataView;
     constructor(dataView) {
         this.dataView = dataView;
     }
     build(tick, status, byteOffset) {
-        var length = 0;
+        let length = 0;
         switch (status & 0b11110000) {
             case 0x80:
             case 0x90:
@@ -39,57 +41,60 @@ class EventBuilder {
                 break;
             case 0xF0:
                 if (status == 0xFF) {
-                    let { byteLength, value } = dvu.dataViewGetUintVariable(this.dataView, byteOffset + 1);
+                    const { byteLength, value } = dvu.dataViewGetUintVariable(this.dataView, byteOffset + 1);
                     length = 1 + byteLength + value;
                 }
                 else {
-                    let { byteLength, value } = dvu.dataViewGetUintVariable(this.dataView, byteOffset);
+                    const { byteLength, value } = dvu.dataViewGetUintVariable(this.dataView, byteOffset);
                     length = byteLength + value;
                 }
                 break;
         }
-        let dataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + byteOffset, length);
+        const dataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + byteOffset, length);
         return midi.Event.create(dataView, tick, status);
     }
 }
-exports.EventBuilder = EventBuilder;
-class Track {
+export class Track {
+    dataView;
+    events;
     constructor(dataView) {
         this.dataView = dataView;
     }
     load() {
-        var pos = 0;
-        var tick = 0;
-        var status = 0x00;
-        var eventBuilder = new EventBuilder(this.dataView);
+        let pos = 0;
+        let tick = 0;
+        let status = 0x00;
+        const eventBuilder = new EventBuilder(this.dataView);
         this.events = [];
         while (pos < this.dataView.byteLength) {
             {
-                let { byteLength, value } = dvu.dataViewGetUintVariable(this.dataView, pos);
+                const { byteLength, value } = dvu.dataViewGetUintVariable(this.dataView, pos);
                 pos += byteLength;
                 tick += value;
             }
             {
-                let byte = this.dataView.getUint8(pos);
-                let msb = byte & 0b10000000;
+                const byte = this.dataView.getUint8(pos);
+                const msb = byte & 0b10000000;
                 if (msb) {
                     status = byte;
                     ++pos;
                 }
-                let event = eventBuilder.build(tick, status, pos);
+                const event = eventBuilder.build(tick, status, pos);
                 pos += event.dataView.byteLength;
                 this.events.push(event);
             }
         }
     }
 }
-exports.Track = Track;
-class Song {
+export class Song {
+    buffer;
+    header;
+    tracks;
     constructor(buffer) {
         this.buffer = buffer;
     }
     load() {
-        let smf = xiff.load(this.buffer, xiff.configs.smf);
+        const smf = xiff.load(this.buffer, xiff.configs.smf);
         this.tracks = [];
         smf.children.forEach((chunk) => {
             switch (chunk.name) {
@@ -98,7 +103,7 @@ class Song {
                     this.header.load();
                     break;
                 case "MTrk":
-                    let track = new Track(chunk.dataView);
+                    const track = new Track(chunk.dataView);
                     track.load();
                     this.tracks.push(track);
                     break;
@@ -108,5 +113,4 @@ class Song {
         });
     }
 }
-exports.Song = Song;
 //# sourceMappingURL=smf.js.map

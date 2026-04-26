@@ -1,4 +1,4 @@
-import { dataViewGetString } from "./binary/data-view-util";
+import { dataViewGetString } from "./binary/data-view-util.js";
 
 export interface Config {
 	recursive?: string[];
@@ -11,24 +11,24 @@ export class Chunk {
 
 	constructor(
 		public dataView: DataView,
-		public name: string,
+		public name: string | null,
 		public formType: string | null,
 		public config: Config,
 	) { }
 
 	load() {
 		this.children = [];
-		var pos = 0;
+		let pos = 0;
 		while (pos < this.dataView.byteLength) {
-			let name = dataViewGetString(this.dataView, pos, 4);
+			const name = dataViewGetString(this.dataView, pos, 4);
 			pos += 4;
-			let length = this.dataView.getUint32(pos, !this.config.bigEndian);
+			const length = this.dataView.getUint32(pos, !this.config.bigEndian);
 			pos += 4;
-			let childDataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + pos, length);
+			const childDataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + pos, length);
 			let child: Chunk;
 			if (this.config.recursive && this.config.recursive.indexOf(name) != -1) {
-				let formType = dataViewGetString(childDataView, 0, 4);
-				let newDataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + pos + 4, length - 4);
+				const formType = dataViewGetString(childDataView, 0, 4);
+				const newDataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + pos + 4, length - 4);
 				child = new Chunk(newDataView, name, formType, this.config);
 				child.load();
 			} else {
@@ -43,15 +43,15 @@ export class Chunk {
 	}
 }
 
-export let configs: {[key: string]: Config} = {
+export const configs: { [key: string]: Config } = {
 	riff: { recursive: ["RIFF", "LIST"] },
 	iff: { bigEndian: true, recursive: ["FORM", "LIST", "CAT "] },
 	smf: { bigEndian: true, allowOddOffset: true },
 };
 
-export let load = (buffer: ArrayBuffer, config: Config) => {
-	let dataView = new DataView(buffer);
-	let rootChunk = new Chunk(dataView, null, null, config);
+export const load = (buffer: ArrayBuffer, config: Config) => {
+	const dataView = new DataView(buffer);
+	const rootChunk = new Chunk(dataView, null, null, config);
 	rootChunk.load();
 	return rootChunk;
 };

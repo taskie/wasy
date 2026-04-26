@@ -1,11 +1,14 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const midi = require("../midi/event");
-const tuning = require("../player/tuning");
-class Monophony {
+import * as midi from "../midi/event.js";
+import * as tuning from "../player/tuning.js";
+export class Monophony {
+    parentPatch;
+    managedNodes;
+    detunableNodes;
 }
-exports.Monophony = Monophony;
-class Patch {
+export class Patch {
+    instrument;
+    destination;
+    tuning;
     constructor(instrument, destination = instrument.source) {
         this.instrument = instrument;
         this.destination = destination;
@@ -16,7 +19,7 @@ class Patch {
     get audioContext() { return this.instrument.audioContext; }
     receiveEvent(event, time) {
         if (event instanceof midi.NoteOnEvent) {
-            let monophony = this.onNoteOn(event, time);
+            const monophony = this.onNoteOn(event, time);
             if (monophony != null) {
                 if (monophony.parentPatch == null) {
                     monophony.parentPatch = this;
@@ -25,14 +28,14 @@ class Patch {
             }
         }
         else if (event instanceof midi.NoteOffEvent) {
-            let monophony = this.instrument.findNote(event.noteNumber);
+            const monophony = this.instrument.findNote(event.noteNumber);
             if (monophony != null) {
                 this.onNoteOff(monophony, time);
             }
         }
         else if (event instanceof midi.PitchBendEvent) {
-            for (let key in this.instrument.noteStore) {
-                let monophony = this.instrument.noteStore[key];
+            for (const key in this.instrument.noteStore) {
+                const monophony = this.instrument.noteStore[key];
                 if (monophony != null && monophony.parentPatch === this) {
                     this.onPitchBend(event, monophony, time);
                 }
@@ -46,20 +49,19 @@ class Patch {
     }
     onExpired(monophony, time) {
         setTimeout(() => {
-            for (let node of monophony.managedNodes) {
+            for (const node of monophony.managedNodes) {
                 node.disconnect();
             }
         }, 1000);
     }
     onPitchBend(event, monophony, time) {
         if (monophony.detunableNodes != null) {
-            for (let node of monophony.detunableNodes) {
-                let oscillator = node;
+            for (const node of monophony.detunableNodes) {
+                const oscillator = node;
                 this.instrument.pitchBend = event.value;
                 oscillator.detune.setValueAtTime(this.detune, time);
             }
         }
     }
 }
-exports.Patch = Patch;
 //# sourceMappingURL=patch.js.map

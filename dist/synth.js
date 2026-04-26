@@ -1,19 +1,19 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const patch_1 = require("./synth/patch");
-class SimpleOscillatorMonophony extends patch_1.Monophony {
+import { Monophony, Patch } from "./synth/patch.js";
+export class SimpleOscillatorMonophony extends Monophony {
+    oscillator;
+    gain;
 }
-exports.SimpleOscillatorMonophony = SimpleOscillatorMonophony;
-class SimpleOscillatorPatch extends patch_1.Patch {
+export class SimpleOscillatorPatch extends Patch {
+    oscillatorType;
     constructor(instrument, oscillatorType = "square", destination) {
         super(instrument, destination);
         this.oscillatorType = oscillatorType;
     }
     onNoteOn(event, time) {
         // initialize
-        let monophony = new SimpleOscillatorMonophony();
-        let oscillator = this.audioContext.createOscillator();
-        let gain = this.audioContext.createGain();
+        const monophony = new SimpleOscillatorMonophony();
+        const oscillator = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
         monophony.oscillator = oscillator;
         monophony.gain = gain;
         monophony.managedNodes = [oscillator, gain];
@@ -39,19 +39,21 @@ class SimpleOscillatorPatch extends patch_1.Patch {
         this.onNoteOff(monophony, time);
     }
 }
-exports.SimpleOscillatorPatch = SimpleOscillatorPatch;
-class NoiseMonophony extends patch_1.Monophony {
+export class NoiseMonophony extends Monophony {
+    source;
+    filter;
+    gain;
 }
-exports.NoiseMonophony = NoiseMonophony;
-class NoisePatch extends patch_1.Patch {
+export class NoisePatch extends Patch {
+    static noiseBuffer;
     constructor(instrument, destination) {
         super(instrument, destination);
         if (NoisePatch.noiseBuffer == null) {
-            var frame = 44100 * 2;
-            let buf = this.audioContext.createBuffer(2, frame, this.audioContext.sampleRate);
-            let data0 = buf.getChannelData(0);
-            let data1 = buf.getChannelData(1);
-            for (var i = 0; i < data0.length; ++i) {
+            const frame = 44100 * 2;
+            const buf = this.audioContext.createBuffer(2, frame, this.audioContext.sampleRate);
+            const data0 = buf.getChannelData(0);
+            const data1 = buf.getChannelData(1);
+            for (let i = 0; i < data0.length; ++i) {
                 data0[i] = (Math.random() * 2 - 1);
                 data1[i] = (Math.random() * 2 - 1);
             }
@@ -60,10 +62,10 @@ class NoisePatch extends patch_1.Patch {
     }
     onNoteOn(event, time) {
         // initialize
-        let monophony = new NoiseMonophony();
-        let source = this.audioContext.createBufferSource();
-        let filter = this.audioContext.createBiquadFilter();
-        let gain = this.audioContext.createGain();
+        const monophony = new NoiseMonophony();
+        const source = this.audioContext.createBufferSource();
+        const filter = this.audioContext.createBiquadFilter();
+        const gain = this.audioContext.createGain();
         monophony.source = source;
         monophony.filter = filter;
         monophony.gain = gain;
@@ -94,8 +96,11 @@ class NoisePatch extends patch_1.Patch {
         this.onNoteOff(monophony, time);
     }
 }
-exports.NoisePatch = NoisePatch;
-class GainedNoisePatch extends NoisePatch {
+export class GainedNoisePatch extends NoisePatch {
+    valueAtBegin;
+    valueAtEnd;
+    duration;
+    fixedFrequency;
     constructor(instrument, valueAtBegin, valueAtEnd, duration, fixedFrequency, destination) {
         super(instrument, destination);
         this.valueAtBegin = valueAtBegin;
@@ -104,23 +109,22 @@ class GainedNoisePatch extends NoisePatch {
         this.fixedFrequency = fixedFrequency;
     }
     onNoteOn(event, time) {
-        let monophony = super.onNoteOn(event, time);
-        let filter = monophony.filter;
-        let gain = monophony.gain;
+        const monophony = super.onNoteOn(event, time);
+        const filter = monophony.filter;
+        const gain = monophony.gain;
         if (this.fixedFrequency != null) {
             filter.frequency.value = this.fixedFrequency;
         }
         else {
             filter.frequency.value = this.tuning.frequency(event.noteNumber + 24);
         }
-        let baseGain = gain.gain.value;
+        const baseGain = gain.gain.value;
         gain.gain.setValueAtTime(this.valueAtBegin * baseGain, time);
         gain.gain.linearRampToValueAtTime(this.valueAtEnd * baseGain, time + this.duration);
         return monophony;
     }
 }
-exports.GainedNoisePatch = GainedNoisePatch;
-class OneShotNoisePatch extends GainedNoisePatch {
+export class OneShotNoisePatch extends GainedNoisePatch {
     onNoteOff(monophony, time) {
     }
     onExpired(monophony, time) {
@@ -130,8 +134,10 @@ class OneShotNoisePatch extends GainedNoisePatch {
         monophony.gain.gain.setValueAtTime(0, time);
     }
 }
-exports.OneShotNoisePatch = OneShotNoisePatch;
-class GainedOscillatorPatch extends SimpleOscillatorPatch {
+export class GainedOscillatorPatch extends SimpleOscillatorPatch {
+    valueAtBegin;
+    valueAtEnd;
+    duration;
     constructor(instrument, valueAtBegin, valueAtEnd, duration, oscillatorType, destination) {
         super(instrument, oscillatorType, destination);
         this.valueAtBegin = valueAtBegin;
@@ -139,23 +145,23 @@ class GainedOscillatorPatch extends SimpleOscillatorPatch {
         this.duration = duration;
     }
     onNoteOn(event, time) {
-        let monophony = super.onNoteOn(event, time);
-        let gain = monophony.gain;
-        let baseGain = gain.gain.value;
+        const monophony = super.onNoteOn(event, time);
+        const gain = monophony.gain;
+        const baseGain = gain.gain.value;
         gain.gain.setValueAtTime(this.valueAtBegin * baseGain, time);
         gain.gain.linearRampToValueAtTime(this.valueAtEnd * baseGain, time + this.duration);
         return monophony;
     }
 }
-exports.GainedOscillatorPatch = GainedOscillatorPatch;
-class OneShotOscillatorPatch extends GainedOscillatorPatch {
+export class OneShotOscillatorPatch extends GainedOscillatorPatch {
+    fixedFrequency;
     constructor(instrument, duration, fixedFrequency, oscillatorType, destination) {
         super(instrument, 1, 0, duration, oscillatorType, destination);
         this.fixedFrequency = fixedFrequency;
     }
     onNoteOn(event, time) {
-        let monophony = super.onNoteOn(event, time);
-        let oscillator = monophony.oscillator;
+        const monophony = super.onNoteOn(event, time);
+        const oscillator = monophony.oscillator;
         let frequency;
         if (this.fixedFrequency != null) {
             frequency = this.fixedFrequency;
@@ -176,49 +182,55 @@ class OneShotOscillatorPatch extends GainedOscillatorPatch {
         monophony.gain.gain.setValueAtTime(0, time);
     }
 }
-exports.OneShotOscillatorPatch = OneShotOscillatorPatch;
-class DrumKitPatch extends patch_1.Patch {
+export class DrumKitPatch extends Patch {
+    patchMap;
+    leftPanpot;
+    rightPanpot;
+    gain;
     constructor(instrument, destination) {
-        let is = instrument;
-        let ds = destination;
-        super(is, ds);
-        ds = this.destination;
+        const is = instrument;
+        super(is, destination);
+        const ds = this.destination;
         // gain
-        let ga = this.audioContext.createGain();
+        const ga = this.audioContext.createGain();
         this.gain = ga;
         this.gain.gain.value = 2;
         ga.connect(ds);
         // panner
-        let lp = this.audioContext.createPanner();
+        const lp = this.audioContext.createPanner();
         this.leftPanpot = lp;
-        let lpValue = (32 - 64) * Math.PI / (64 * 2);
-        lp.setPosition(Math.sin(lpValue), 0, -Math.cos(lpValue));
+        const lpValue = (32 - 64) * Math.PI / (64 * 2);
+        lp.positionX.value = Math.sin(lpValue);
+        lp.positionY.value = 0;
+        lp.positionZ.value = -Math.cos(lpValue);
         lp.connect(ga);
-        let rp = this.audioContext.createPanner();
+        const rp = this.audioContext.createPanner();
         this.rightPanpot = rp;
-        let rpValue = (96 - 64) * Math.PI / (64 * 2);
-        rp.setPosition(Math.sin(rpValue), 0, -Math.cos(rpValue));
+        const rpValue = (96 - 64) * Math.PI / (64 * 2);
+        rp.positionX.value = Math.sin(rpValue);
+        rp.positionY.value = 0;
+        rp.positionZ.value = -Math.cos(rpValue);
         rp.connect(ga);
         // assign
         this.patchMap = {
-            0: new OneShotNoisePatch(is, 1, 0, 0.05, null, ga),
-            35: new OneShotOscillatorPatch(is, 0.2, 140, "sine", ga),
-            36: new OneShotOscillatorPatch(is, 0.2, 150, "square", ga),
-            37: new OneShotNoisePatch(is, 1, 0, 0.1, 2000, ga),
-            38: new OneShotNoisePatch(is, 1, 0, 0.3, 1000, ga),
-            39: new OneShotNoisePatch(is, 1, 0, 0.4, 3000, ga),
-            40: new OneShotNoisePatch(is, 1, 0, 0.5, 1500, ga),
-            41: new OneShotOscillatorPatch(is, 0.3, 200, "sine", rp),
-            42: new OneShotNoisePatch(is, 1, 0, 0.1, 6000, lp),
-            43: new OneShotOscillatorPatch(is, 0.3, 250, "sine", rp),
-            44: new OneShotNoisePatch(is, 1, 0, 0.1, 5000, lp),
-            45: new OneShotOscillatorPatch(is, 0.3, 350, "sine", rp),
-            46: new OneShotNoisePatch(is, 1, 0, 0.3, 6000, lp),
-            47: new OneShotOscillatorPatch(is, 0.3, 400, "sine", rp),
-            48: new OneShotOscillatorPatch(is, 0.3, 500, "sine", rp),
-            49: new OneShotNoisePatch(is, 1, 0, 1.5, 8000, ga),
-            50: new OneShotOscillatorPatch(is, 0.3, 550, "sine", rp),
-            51: new OneShotNoisePatch(is, 1, 0, 0.5, 16000, ga),
+            0: new OneShotNoisePatch(is, 1, 0, 0.05, undefined, ga), // default
+            35: new OneShotOscillatorPatch(is, 0.2, 140, "sine", ga), // Bass Drum 2
+            36: new OneShotOscillatorPatch(is, 0.2, 150, "square", ga), // Bass Drum 1
+            37: new OneShotNoisePatch(is, 1, 0, 0.1, 2000, ga), // Side Stick
+            38: new OneShotNoisePatch(is, 1, 0, 0.3, 1000, ga), // Snare Drum 1
+            39: new OneShotNoisePatch(is, 1, 0, 0.4, 3000, ga), // Hand Clap
+            40: new OneShotNoisePatch(is, 1, 0, 0.5, 1500, ga), // Snare Drum 2
+            41: new OneShotOscillatorPatch(is, 0.3, 200, "sine", rp), // Low Tom 2
+            42: new OneShotNoisePatch(is, 1, 0, 0.1, 6000, lp), // Closed Hi-hat
+            43: new OneShotOscillatorPatch(is, 0.3, 250, "sine", rp), // Low Tom 1
+            44: new OneShotNoisePatch(is, 1, 0, 0.1, 5000, lp), // Pedal Hi-hat
+            45: new OneShotOscillatorPatch(is, 0.3, 350, "sine", rp), // Mid Tom 2
+            46: new OneShotNoisePatch(is, 1, 0, 0.3, 6000, lp), // Open Hi-hat
+            47: new OneShotOscillatorPatch(is, 0.3, 400, "sine", rp), // Mid Tom 1
+            48: new OneShotOscillatorPatch(is, 0.3, 500, "sine", rp), // High Tom 2
+            49: new OneShotNoisePatch(is, 1, 0, 1.5, 8000, ga), // Crash Cymbal 1
+            50: new OneShotOscillatorPatch(is, 0.3, 550, "sine", rp), // High Tom 1
+            51: new OneShotNoisePatch(is, 1, 0, 0.5, 16000, ga), // Ride Cymbal 1
         };
     }
     onNoteOn(event, time) {
@@ -246,8 +258,7 @@ class DrumKitPatch extends patch_1.Patch {
         monophony.parentPatch.onExpired(monophony, time);
     }
 }
-exports.DrumKitPatch = DrumKitPatch;
-class PatchGenerator {
+export class PatchGenerator {
     generate(instrument, program, isDrum = false) {
         const simpleMap = {
             0x00: "sine",
@@ -280,7 +291,7 @@ class PatchGenerator {
                 return new NoisePatch(instrument);
             }
             else if (program in simpleMap) {
-                let oscillatorType = simpleMap[program];
+                const oscillatorType = simpleMap[program];
                 if (program <= 0x05) {
                     return new GainedOscillatorPatch(instrument, 1.2, 0.1, 0.7, oscillatorType);
                 }
@@ -294,5 +305,4 @@ class PatchGenerator {
         }
     }
 }
-exports.PatchGenerator = PatchGenerator;
 //# sourceMappingURL=synth.js.map

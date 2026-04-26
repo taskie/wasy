@@ -1,5 +1,5 @@
-import * as midi from "./event";
-import Signal from "../signal";
+import * as midi from "./event.js";
+import Signal from "../signal.js";
 
 export interface ExpiredMessage<T> {
     data: T;
@@ -7,7 +7,7 @@ export interface ExpiredMessage<T> {
 }
 
 export class NotePool<T> {
-    _noteStore: { [noteNumber: number]: T };
+    _noteStore: { [noteNumber: number]: T | undefined };
     _noteNumberQueue: number[];
     _expiredEmitter: Signal<ExpiredMessage<T>>;
 
@@ -28,10 +28,10 @@ export class NotePool<T> {
     register(noteNumber: number, data: T, time: number) {
         // check store
         {
-            let oldData = this._noteStore[noteNumber];
+            const oldData = this._noteStore[noteNumber];
             if (oldData != null) {
                 this._expiredEmitter.emit({ data: oldData, time });
-                let oldIndex = this._noteNumberQueue.indexOf(noteNumber);
+                const oldIndex = this._noteNumberQueue.indexOf(noteNumber);
                 if (oldIndex !== -1) {
                     this._noteNumberQueue.splice(oldIndex, 1);
                 }
@@ -42,18 +42,21 @@ export class NotePool<T> {
         {
             this._noteNumberQueue.push(noteNumber);
             while (this._noteNumberQueue.length > this.polyphony) {
-                let oldNoteNumber = this._noteNumberQueue.shift();
-                this._expiredEmitter.emit({ data: this._noteStore[oldNoteNumber], time });
-                this._noteStore[oldNoteNumber] = null;
+                const oldNoteNumber = this._noteNumberQueue.shift()!;
+                const oldData = this._noteStore[oldNoteNumber];
+                if (oldData != null) {
+                    this._expiredEmitter.emit({ data: oldData, time });
+                }
+                delete this._noteStore[oldNoteNumber];
             }
         }
     }
 
     unregister(noteNumber: number, time: number) {
-        let oldData = this._noteStore[noteNumber];
+        const oldData = this._noteStore[noteNumber];
         if (oldData != null) {
             this._expiredEmitter.emit({ data: oldData, time });
-            let oldIndex = this._noteNumberQueue.indexOf(noteNumber);
+            const oldIndex = this._noteNumberQueue.indexOf(noteNumber);
             if (oldIndex !== -1) {
                 this._noteNumberQueue.splice(oldIndex, 1);
             }
@@ -61,18 +64,21 @@ export class NotePool<T> {
     }
 
     unregisterAll(time: number = 0) {
-        for (let noteNumber of this._noteNumberQueue) {
-            this._expiredEmitter.emit({ data: this._noteStore[noteNumber], time });
+        for (const noteNumber of this._noteNumberQueue) {
+            const data = this._noteStore[noteNumber];
+            if (data != null) {
+                this._expiredEmitter.emit({ data, time });
+            }
         }
         this._noteStore = {};
         this._noteNumberQueue = [];
     }
 
-    find(noteNumber: number): T {
+    find(noteNumber: number): T | undefined {
         return this._noteStore[noteNumber];
     }
 
-    get noteStore(): { [noteNumber: number]: T } {
+    get noteStore() {
         return this._noteStore;
     }
 
@@ -142,8 +148,10 @@ export class Instrument<T> {
 
     setPanpot(panpot: number) {
         this.panpot = panpot;
-        var value = (panpot - 64) * Math.PI / (64 * 2);
-        this._panner.setPosition(Math.sin(value), 0, -Math.cos(value));
+        const value = (panpot - 64) * Math.PI / (64 * 2);
+        this._panner.positionX.value = Math.sin(value);
+        this._panner.positionY.value = 0;
+        this._panner.positionZ.value = -Math.cos(value);
     }
 
     setVolume(volume: number, time: number) {
@@ -160,43 +168,43 @@ export class Instrument<T> {
 
     set detune(detune: number) { this.pitchBend = detune / 100 / this.pitchBendRange * 8192; }
     get detune() { return this.pitchBend / 8192 * this.pitchBendRange * 100; }
-    
+
     registerNote(noteNumber: number, data: T, time: number) {
         this.notePool.register(noteNumber, data, time);
     }
-    
+
     findNote(noteNumber: number) {
         return this.notePool.find(noteNumber);
     }
-    
+
     expireNote(noteNumber: number, time: number) {
         this.notePool.unregister(noteNumber, time);
     }
-    
+
     get noteStore() {
         return this.notePool.noteStore;
     }
-    
+
     onExpired(listener: (data: ExpiredMessage<T>) => void) {
         this._expiredEmitter.on(listener);
     }
-    
+
     offExpired(listener: (data: ExpiredMessage<T>) => void) {
         this._expiredEmitter.off(listener);
     }
-    
+
     private _expiredListener(message: ExpiredMessage<T>) {
         this._expiredEmitter.emit(message);
     }
-    
+
     onProgramChange(listener: (event: midi.ProgramChangeEvent) => void) {
         this._programChangeEmitter.on(listener);
     }
-    
+
     offProgramChange(listener: (event: midi.ProgramChangeEvent) => void) {
         this._programChangeEmitter.off(listener);
     }
-    
+
     receiveEvent(event: midi.Event, time: number) {
         if (event instanceof midi.ControlChangeEvent) {
             switch (event.controller) {
@@ -246,7 +254,7 @@ export class Instrument<T> {
             }
         }
     }
-    
+
     receiveRPN(rpn: number, data: number, time: number) {
         switch (rpn) {
             case 0: // pitch bend range

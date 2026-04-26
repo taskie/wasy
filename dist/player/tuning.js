@@ -1,6 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-class EqualTemperamentTuning {
+export class EqualTemperamentTuning {
+    _frequencyOf69;
+    _cache;
     constructor(_frequencyOf69 = 440) {
         this._frequencyOf69 = _frequencyOf69;
         this._cache = {};
@@ -16,5 +16,4 @@ class EqualTemperamentTuning {
         }
     }
 }
-exports.EqualTemperamentTuning = EqualTemperamentTuning;
 //# sourceMappingURL=tuning.js.map

@@ -1,6 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.instrumentPatchs = [
+export const instrumentPatchs = [
     "Bright Piano",
     "Electric Grand Piano",
     "Honky-tonk Piano",
@@ -127,9 +125,9 @@ exports.instrumentPatchs = [
     "Telephone Ring",
     "Helicopter",
     "Applause",
-    "Gunshot"
+    "Gunshot",
 ];
-exports.percussionKeyMap = {
+export const percussionKeyMap = {
     35: "Bass Drum 2",
     36: "Bass Drum 1",
     37: "Side Stick",
@@ -176,6 +174,6 @@ exports.percussionKeyMap = {
     78: "Mute Cuica",
     79: "Open Cuica",
     80: "Mute Triangle",
-    81: "Open Triangle"
+    81: "Open Triangle",
 };
 //# sourceMappingURL=gm.js.map

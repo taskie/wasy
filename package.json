@@ -2,17 +2,34 @@
     "name": "wasy",
     "version": "0.0.0",
     "description": "Web Audio Synthesizer",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "src"
+    ],
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "build": "tsc",
+        "clean": "rm -rf dist",
+        "rebuild": "npm run clean && npm run build",
+        "type-check": "tsc --noEmit",
+        "prepublishOnly": "npm run rebuild"
     },
     "author": "taskie",
     "license": "MIT",
-    "devDependencies": {
-        "glob": "^7.1.2",
-        "typescript": "^2.4.1"
+    "engines": {
+        "node": ">=18"
     },
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "devDependencies": {
+        "typescript": "^5.5.0"
+    },
     "repository": {
         "type": "git",
         "url": "https://github.com/taskie/wasy.git"
@@ -20,6 +37,5 @@
     "bugs": {
         "url": "https://github.com/taskie/wasy/issues"
     },
-    "homepage": "https://github.com/taskie/wasy",
-    "dependencies": {}
+    "homepage": "https://github.com/taskie/wasy"
 }

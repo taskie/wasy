@@ -1,6 +1,6 @@
-import * as midi from "./midi/event";
-import * as inst from "./midi/instrument";
-import { Monophony, Patch } from "./synth/patch";
+import * as midi from "./midi/event.js";
+import * as inst from "./midi/instrument.js";
+import { Monophony, Patch } from "./synth/patch.js";
 export declare class SimpleOscillatorMonophony extends Monophony {
     oscillator: OscillatorNode;
     gain: GainNode;
@@ -13,7 +13,6 @@ export declare class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonopho
     onExpired(monophony: SimpleOscillatorMonophony, time: number): void;
 }
 export declare class NoiseMonophony extends Monophony {
-    managedNodes: AudioNode[];
     source: AudioBufferSourceNode;
     filter: BiquadFilterNode;
     gain: GainNode;
@@ -29,8 +28,8 @@ export declare class GainedNoisePatch extends NoisePatch {
     valueAtBegin: number;
     valueAtEnd: number;
     duration: number;
-    fixedFrequency: number;
-    constructor(instrument: inst.Instrument<Monophony>, valueAtBegin: number, valueAtEnd: number, duration: number, fixedFrequency?: number, destination?: AudioNode);
+    fixedFrequency?: number | undefined;
+    constructor(instrument: inst.Instrument<Monophony>, valueAtBegin: number, valueAtEnd: number, duration: number, fixedFrequency?: number | undefined, destination?: AudioNode);
     onNoteOn(event: midi.NoteOnEvent, time: number): NoiseMonophony;
 }
 export declare class OneShotNoisePatch extends GainedNoisePatch {
@@ -45,8 +44,8 @@ export declare class GainedOscillatorPatch extends SimpleOscillatorPatch {
     onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony;
 }
 export declare class OneShotOscillatorPatch extends GainedOscillatorPatch {
-    fixedFrequency: number;
-    constructor(instrument: inst.Instrument<Monophony>, duration: number, fixedFrequency?: number, oscillatorType?: OscillatorType, destination?: AudioNode);
+    fixedFrequency?: number | undefined;
+    constructor(instrument: inst.Instrument<Monophony>, duration: number, fixedFrequency?: number | undefined, oscillatorType?: OscillatorType, destination?: AudioNode);
     onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony;
     onNoteOff(monophony: SimpleOscillatorMonophony, time: number): void;
     onExpired(monophony: SimpleOscillatorMonophony, time: number): void;
@@ -60,9 +59,10 @@ export declare class DrumKitPatch extends Patch<Monophony> {
     gain: GainNode;
     constructor(instrument: inst.Instrument<Monophony>, destination?: AudioNode);
     onNoteOn(event: midi.NoteOnEvent, time: number): Monophony;
-    onNoteOff(monophony: NoiseMonophony, time: number): void;
-    onExpired(monophony: NoiseMonophony, time: number): void;
+    onNoteOff(monophony: Monophony, time: number): void;
+    onExpired(monophony: Monophony, time: number): void;
 }
 export declare class PatchGenerator {
     generate(instrument: inst.Instrument<Monophony>, program: number, isDrum?: boolean): Patch<Monophony>;
 }
+//# sourceMappingURL=synth.d.ts.map

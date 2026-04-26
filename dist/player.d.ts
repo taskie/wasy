@@ -1,10 +1,11 @@
-import * as midi from "./midi/event";
-import * as smf from "./smf";
+import * as midi from "./midi/event.js";
+import * as smf from "./smf.js";
 export declare class Player {
     song: smf.Song;
     cursors: number[];
     constructor(buffer: ArrayBuffer);
-    readonly resolution: number;
-    readonly numberOfTracks: number;
+    get resolution(): number;
+    get numberOfTracks(): number;
     read(tick: number): midi.Event[][];
 }
+//# sourceMappingURL=player.d.ts.map

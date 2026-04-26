@@ -2,7 +2,11 @@ node_modules
 
 build
 tmp
+dist
 
 logs
 *.log
 npm-debug.log*
+
+.DS_Store
+*.tsbuildinfo

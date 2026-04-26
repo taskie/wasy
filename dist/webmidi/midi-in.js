@@ -1,11 +1,10 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const midi = require("../midi/event");
-const dvu = require("../binary/data-view-util");
-const signal_1 = require("../signal");
-class MIDIIn {
+import * as midi from "../midi/event.js";
+import * as dvu from "../binary/data-view-util.js";
+import Signal from "../signal.js";
+export class MIDIIn {
+    _emitter;
     constructor() {
-        this._emitter = new signal_1.default();
+        this._emitter = new Signal();
     }
     on(listener) {
         this._emitter.on(listener);
@@ -20,18 +19,18 @@ class MIDIIn {
         this._emitter.emit(event);
     }
 }
-exports.MIDIIn = MIDIIn;
-class WebMIDIIn extends MIDIIn {
+export class WebMIDIIn extends MIDIIn {
     constructor() {
         super();
-        if (!navigator.requestMIDIAccess) {
+        if (typeof navigator.requestMIDIAccess !== "function") {
             return;
         }
         navigator.requestMIDIAccess().then((midiAccess) => {
-            const it = midiAccess.inputs.values();
-            for (let input = it.next(); !input.done; input = it.next()) {
-                console.log(input.value);
-                input.value.onmidimessage = (event) => {
+            for (const input of midiAccess.inputs.values()) {
+                console.log(input);
+                input.onmidimessage = (event) => {
+                    if (!event.data)
+                        return;
                     const dataView = new DataView(event.data.buffer);
                     const status = dataView.getUint8(0);
                     const subDataView = dvu.dataViewGetSubDataView(dataView, 1);
@@ -44,14 +43,13 @@ class WebMIDIIn extends MIDIIn {
         });
     }
 }
-exports.WebMIDIIn = WebMIDIIn;
-class WebMidiLinkIn extends MIDIIn {
+export class WebMidiLinkIn extends MIDIIn {
     constructor() {
         super();
         window.addEventListener("message", (event) => {
             const elems = event.data.split(",");
             if (elems[0] === "midi") {
-                const ints = elems.slice(1).map(x => parseInt(x, 16));
+                const ints = elems.slice(1).map((x) => parseInt(x, 16));
                 const bytes = new Uint8Array(ints);
                 const dataView = new DataView(bytes.buffer);
                 const status = dataView.getUint8(0);
@@ -62,5 +60,4 @@ class WebMidiLinkIn extends MIDIIn {
         }, false);
     }
 }
-exports.WebMidiLinkIn = WebMidiLinkIn;
 //# sourceMappingURL=midi-in.js.map
