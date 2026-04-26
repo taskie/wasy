@@ -142,7 +142,7 @@ export class GainedNoisePatch extends NoisePatch {
 }
 
 export class OneShotNoisePatch extends GainedNoisePatch {
-	onNoteOff(monophony: NoiseMonophony, time: number) {
+	onNoteOff(_monophony: NoiseMonophony, _time: number) {
 
 	}
 
@@ -199,7 +199,7 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 		return monophony;
 	}
 
-	onNoteOff(monophony: SimpleOscillatorMonophony, time: number) {
+	onNoteOff(_monophony: SimpleOscillatorMonophony, _time: number) {
 
 	}
 
@@ -274,7 +274,7 @@ export class DrumKitPatch extends Patch<Monophony> {
 		}
 		const patch = this.patchMap[index];
 		const hiHats = [42, 44, 46];
-		if (hiHats.indexOf(index) != -1) {
+		if (hiHats.indexOf(index) !== -1) {
 			for (const hiHat of hiHats) {
 				if (hiHat === index) continue;
 				this.instrument.expireNote(hiHat, time);

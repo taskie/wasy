@@ -36,7 +36,7 @@ export class EventBuilder {
 				length = 1;
 				break;
 			case 0xF0:
-				if (status == 0xFF) {
+				if (status === 0xFF) {
 					const { byteLength, value } = dvu.dataViewGetUintVariable(this.dataView, byteOffset + 1);
 					length = 1 + byteLength + value;
 				} else {

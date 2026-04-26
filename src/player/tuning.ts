@@ -13,7 +13,7 @@ export class EqualTemperamentTuning implements Tuning {
         if (noteNumber in this._cache) {
             return this._cache[noteNumber];
         } else {
-            let frequency = this._frequencyOf69 * Math.pow(2, (noteNumber - 69) / 12);
+            const frequency = this._frequencyOf69 * Math.pow(2, (noteNumber - 69) / 12);
             this._cache[noteNumber] = frequency;
             return frequency;
         }

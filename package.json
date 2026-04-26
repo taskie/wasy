@@ -25,6 +25,7 @@
         "type-check": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",
+        "lint": "oxlint",
         "prepublishOnly": "npm run rebuild"
     },
     "author": "taskie",
@@ -33,6 +34,7 @@
         "node": ">=18"
     },
     "devDependencies": {
+        "oxlint": "^1.61.0",
         "typescript": "^5.5.0",
         "vitest": "^4.1.5"
     },

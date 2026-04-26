@@ -1,0 +1,21 @@
+{
+    "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+    "categories": {
+        "correctness": "error",
+        "suspicious": "warn"
+    },
+    "rules": {
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+        "prefer-const": "error",
+        "no-var": "error",
+        "eqeqeq": ["error", "always", { "null": "ignore" }],
+        "unicorn/prefer-add-event-listener": "off",
+        "unicorn/require-post-message-target-origin": "off"
+    },
+    "ignorePatterns": [
+        "dist",
+        "node_modules",
+        "**/dist",
+        "**/node_modules"
+    ]
+}

@@ -10,18 +10,18 @@ export default class Signal<T> {
     }
     
     off(listener: (data: T) => void) {
-        let pos = this.listeners.indexOf(listener);
+        const pos = this.listeners.indexOf(listener);
         if (pos !== -1) {
             this.listeners.splice(pos, 1);
         }
     }
-    
+
     offAll() {
         this.listeners = [];
     }
-    
+
     emit(data: T) {
-        for (let listener of this.listeners) {
+        for (const listener of this.listeners) {
             listener(data);
         }
     }

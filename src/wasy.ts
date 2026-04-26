@@ -95,13 +95,13 @@ export class Wasy {
 				Object.setPrototypeOf(timeStamp, timer.TimeStamp.prototype);
 				newEventsStore.forEach((newEvents, channelNumber) => {
 					for (const newEvent of newEvents) {
-						const event = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
-						this._emitter.emit({ timeStamp, midiEvent: event });
-						const time = timeStamp.accurateTime(event.tick);
-						this.instruments[channelNumber].receiveEvent(event, time);
+						const midiEvent = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
+						this._emitter.emit({ timeStamp, midiEvent });
+						const time = timeStamp.accurateTime(midiEvent.tick);
+						this.instruments[channelNumber].receiveEvent(midiEvent, time);
 						if (channelNumber === 0) {
-							if (event instanceof midi.TempoMetaEvent) {
-								this.timer.secondsPerBeat = event.secondsPerBeat;
+							if (midiEvent instanceof midi.TempoMetaEvent) {
+								this.timer.secondsPerBeat = midiEvent.secondsPerBeat;
 							}
 						}
 					}

@@ -87,7 +87,9 @@ export class NotePool<T> {
     }
 }
 
-export interface Patch<T> {
+// The `_T` type parameter is unused inside the interface body but flows
+// through `Instrument<T>` to bind the patch's monophony type.
+export interface Patch<_T> {
     receiveEvent(event: midi.Event, time: number): void;
 }
 
@@ -255,7 +257,7 @@ export class Instrument<T> {
         }
     }
 
-    receiveRPN(rpn: number, data: number, time: number) {
+    receiveRPN(rpn: number, data: number, _time: number) {
         switch (rpn) {
             case 0: // pitch bend range
                 this.pitchBendRange = data;

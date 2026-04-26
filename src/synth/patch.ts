@@ -43,15 +43,15 @@ export class Patch<T extends Monophony> implements inst.Patch<T> {
 		}
 	}
 
-	onNoteOn(event: midi.NoteOnEvent, time: number): T | null {
+	onNoteOn(_event: midi.NoteOnEvent, _time: number): T | null {
 		return null;
 	}
 
-	onNoteOff(data: T, time: number) {
+	onNoteOff(_data: T, _time: number) {
 
 	}
 
-	onExpired(monophony: T, time: number) {
+	onExpired(monophony: T, _time: number) {
 		setTimeout(() => {
 			for (const node of monophony.managedNodes) {
 				node.disconnect();

@@ -7,8 +7,7 @@ export class Player {
 	constructor(buffer: ArrayBuffer) {
 		this.song = new smf.Song(buffer);
 		this.song.load();
-		this.cursors = new Array(this.numberOfTracks);
-		for (let i = 0; i < this.cursors.length; ++i) this.cursors[i] = 0;
+		this.cursors = Array.from({ length: this.numberOfTracks }, () => 0);
 	}
 	get resolution() { return this.song.header.resolution; }
 	get numberOfTracks() { return this.song.header.numberOfTracks; }

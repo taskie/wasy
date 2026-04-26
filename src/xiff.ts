@@ -26,7 +26,7 @@ export class Chunk {
 			pos += 4;
 			const childDataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + pos, length);
 			let child: Chunk;
-			if (this.config.recursive && this.config.recursive.indexOf(name) != -1) {
+			if (this.config.recursive && this.config.recursive.indexOf(name) !== -1) {
 				const formType = dataViewGetString(childDataView, 0, 4);
 				const newDataView = new DataView(this.dataView.buffer, this.dataView.byteOffset + pos + 4, length - 4);
 				child = new Chunk(newDataView, name, formType, this.config);
@@ -36,7 +36,7 @@ export class Chunk {
 			}
 			this.children.push(child);
 			pos += length;
-			if (!this.config.allowOddOffset && pos % 2 == 1) {
+			if (!this.config.allowOddOffset && pos % 2 === 1) {
 				++pos;
 			}
 		}
