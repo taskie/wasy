@@ -110,8 +110,16 @@ export class Instrument<T> {
     pitchBend!: number;
     pitchBendRange!: number;
 
+    bankMSB!: number;       //  0
+    bankLSB!: number;       // 32
+
     dataEntry!: number;
     rpn!: number;
+    nrpn!: number;
+    // Tracks whether the most recent parameter-select pair was RPN
+    // (CC 100/101) or NRPN (CC 98/99). DataEntry (CC 6/38) is routed
+    // to receiveRPN / receiveNRPN accordingly.
+    private _lastParamType: "rpn" | "nrpn" = "rpn";
 
     constructor(public audioContext: AudioContext, public destination: AudioNode) {
         this.notePool = new NotePool<T>();
@@ -135,8 +143,13 @@ export class Instrument<T> {
         this.pitchBend = 0;
         this.pitchBendRange = 2;
 
+        this.bankMSB = 0;
+        this.bankLSB = 0;
+
         this.dataEntry = 0;
-        this.rpn = 0;
+        this.rpn = 0x3FFF;   // null RPN
+        this.nrpn = 0x3FFF;  // null NRPN
+        this._lastParamType = "rpn";
     }
 
     destroy() {
@@ -209,6 +222,12 @@ export class Instrument<T> {
     receiveEvent(event: midi.Event, time: number) {
         if (event instanceof midi.ControlChangeEvent) {
             switch (event.controller) {
+                case 0:     // BankSelectMSB
+                    this.bankMSB = event.value;
+                    break;
+                case 32:    // BankSelectLSB
+                    this.bankLSB = event.value;
+                    break;
                 case 7:     // Volume
                     this.setVolume(event.value, time);
                     break;
@@ -221,20 +240,32 @@ export class Instrument<T> {
                 case 6:     // DataEntryMSB
                     this.dataEntry &= 0b00000001111111;
                     this.dataEntry |= event.value << 7;
-                    this.receiveRPN(this.rpn, this.dataEntry, time);
+                    this._dispatchDataEntry(time);
                     break;
                 case 38:    // DataEntryLSB
                     this.dataEntry &= 0b11111110000000;
                     this.dataEntry |= event.value;
-                    this.receiveRPN(this.rpn, this.dataEntry, time);
+                    this._dispatchDataEntry(time);
                     break;
-                case 100: // RPN LSB
+                case 98:    // NRPN LSB
+                    this.nrpn &= 0b11111110000000;
+                    this.nrpn |= event.value;
+                    this._lastParamType = "nrpn";
+                    break;
+                case 99:    // NRPN MSB
+                    this.nrpn &= 0b00000001111111;
+                    this.nrpn |= event.value << 7;
+                    this._lastParamType = "nrpn";
+                    break;
+                case 100:   // RPN LSB
                     this.rpn &= 0b11111110000000;
                     this.rpn |= event.value;
+                    this._lastParamType = "rpn";
                     break;
-                case 101: // RPN MSB
+                case 101:   // RPN MSB
                     this.rpn &= 0b00000001111111;
                     this.rpn |= event.value << 7;
+                    this._lastParamType = "rpn";
                     break;
                 case 120: // AllSoundOff
                     this.notePool.unregisterAll();
@@ -257,6 +288,16 @@ export class Instrument<T> {
         }
     }
 
+    private _dispatchDataEntry(time: number) {
+        if (this._lastParamType === "rpn") {
+            if (this.rpn === 0x3FFF) return;
+            this.receiveRPN(this.rpn, this.dataEntry, time);
+        } else {
+            if (this.nrpn === 0x3FFF) return;
+            this.receiveNRPN(this.nrpn, this.dataEntry, time);
+        }
+    }
+
     receiveRPN(rpn: number, data: number, _time: number) {
         switch (rpn) {
             case 0: // pitch bend range: MSB = semitones, LSB = cents
@@ -265,5 +306,9 @@ export class Instrument<T> {
             default:
                 break;
         }
+    }
+
+    receiveNRPN(_nrpn: number, _data: number, _time: number) {
+        // Hook for NRPN handling (GS / XG / vendor-specific). Default no-op.
     }
 }
