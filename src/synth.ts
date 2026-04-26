@@ -279,7 +279,7 @@ export class DrumKitPatch extends Patch<Monophony> {
 				this.instrument.expireNote(hiHat, time);
 			}
 		}
-		const monophony = patch.onNoteOn(event, time)!;
+		const monophony = patch.onNoteOn(event, time);
 		monophony.parentPatch = patch;
 		return monophony;
 	}

@@ -8,7 +8,7 @@ export class Monophony {
 	detunableNodes!: AudioNode[];
 }
 
-export class Patch<T extends Monophony> implements inst.Patch<T> {
+export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
 	tuning: tuning.Tuning;
 
 	constructor(
@@ -24,10 +24,8 @@ export class Patch<T extends Monophony> implements inst.Patch<T> {
 	receiveEvent(event: midi.Event, time: number) {
 		if (event instanceof midi.NoteOnEvent) {
 			const monophony = this.onNoteOn(event, time);
-			if (monophony != null) {
-				if (monophony.parentPatch == null) { monophony.parentPatch = this; }
-				this.instrument.registerNote(event.noteNumber, monophony, time);
-			}
+			if (monophony.parentPatch == null) { monophony.parentPatch = this; }
+			this.instrument.registerNote(event.noteNumber, monophony, time);
 		} else if (event instanceof midi.NoteOffEvent) {
 			const monophony = this.instrument.findNote(event.noteNumber);
 			if (monophony != null) {
@@ -43,9 +41,7 @@ export class Patch<T extends Monophony> implements inst.Patch<T> {
 		}
 	}
 
-	onNoteOn(_event: midi.NoteOnEvent, _time: number): T | null {
-		return null;
-	}
+	abstract onNoteOn(event: midi.NoteOnEvent, time: number): T;
 
 	onNoteOff(_data: T, _time: number) {
 
