@@ -1,11 +1,11 @@
 import * as midi from "../midi/event.js";
 import * as dvu from "../binary/data-view-util.js";
-import Signal from "../signal.js";
+import { createSignal, type Signal } from "../signal.js";
 
 export class MIDIIn {
 	private _emitter: Signal<midi.Event>;
 	constructor() {
-		this._emitter = new Signal();
+		this._emitter = createSignal();
 	}
 	on(listener: (event: midi.Event) => void) {
 		this._emitter.on(listener);

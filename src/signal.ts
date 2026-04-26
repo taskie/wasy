@@ -1,28 +1,29 @@
-export default class Signal<T> {
-    listeners: ((data: T) => void)[];
+export interface Signal<T> {
+    on(listener: (data: T) => void): void;
+    off(listener: (data: T) => void): void;
+    offAll(): void;
+    emit(data: T): void;
+}
 
-    constructor () {
-        this.listeners = [];
-    }
-    
-    on(listener: (data: T) => void) {
-        this.listeners.push(listener);
-    }
-    
-    off(listener: (data: T) => void) {
-        const pos = this.listeners.indexOf(listener);
-        if (pos !== -1) {
-            this.listeners.splice(pos, 1);
-        }
-    }
-
-    offAll() {
-        this.listeners = [];
-    }
-
-    emit(data: T) {
-        for (const listener of this.listeners) {
-            listener(data);
-        }
-    }
+export function createSignal<T>(): Signal<T> {
+    let listeners: ((data: T) => void)[] = [];
+    return {
+        on(listener) {
+            listeners.push(listener);
+        },
+        off(listener) {
+            const pos = listeners.indexOf(listener);
+            if (pos !== -1) {
+                listeners.splice(pos, 1);
+            }
+        },
+        offAll() {
+            listeners = [];
+        },
+        emit(data) {
+            for (const listener of listeners) {
+                listener(data);
+            }
+        },
+    };
 }

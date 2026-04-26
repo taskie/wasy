@@ -27,8 +27,8 @@ export class Event {
 		const statusType = status & 0xF0;
 		if (status === 0xFF) {
 			return MetaEvent.create(dataView, tick, status);
-		} else if (status === 0x90 && dataView.getUint8(1) === 0) {
-			return new NoteOffEvent(dataView, tick, 0x80);
+		} else if (statusType === 0x90 && dataView.getUint8(1) === 0) {
+			return new NoteOffEvent(dataView, tick, 0x80 | (status & 0x0F));
 		} else {
 			const EventClass: typeof Event = this.statusEventMap[statusType];
 			return new EventClass(dataView, tick, status);
@@ -92,6 +92,15 @@ export class MetaEvent extends FxEvent {
 	get data() {
 		const { value, byteLength } = dvu.dataViewGetUintVariable(this.dataView, 1);
 		return dvu.dataViewGetSubDataView(this.dataView, 1 + byteLength, value);
+	}
+	// Decode meta-event payload as text. SMF predates UTF-8 and Japanese
+	// titles/lyrics are commonly Shift_JIS, but TextDecoder("shift_jis")
+	// is also widely supported now. Default to UTF-8; callers that know
+	// the encoding can pass it explicitly.
+	text(encoding: string = "utf-8"): string {
+		const data = this.data;
+		const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+		return new TextDecoder(encoding, { fatal: false }).decode(bytes);
 	}
 }
 

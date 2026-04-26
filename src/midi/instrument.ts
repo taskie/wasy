@@ -1,5 +1,5 @@
 import * as midi from "./event.js";
-import Signal from "../signal.js";
+import { createSignal, type Signal } from "../signal.js";
 
 export interface ExpiredMessage<T> {
     data: T;
@@ -14,7 +14,7 @@ export class NotePool<T> {
     constructor(public polyphony: number = 16) {
         this._noteStore = {};
         this._noteNumberQueue = [];
-        this._expiredEmitter = new Signal<ExpiredMessage<T>>();
+        this._expiredEmitter = createSignal<ExpiredMessage<T>>();
     }
 
     onExpired(listener: (message: ExpiredMessage<T>) => void) {
@@ -115,8 +115,8 @@ export class Instrument<T> {
     constructor(public audioContext: AudioContext, public destination: AudioNode) {
         this.notePool = new NotePool<T>();
         this.notePool.onExpired(this._expiredListener.bind(this));
-        this._expiredEmitter = new Signal<ExpiredMessage<T>>();
-        this._programChangeEmitter = new Signal<midi.ProgramChangeEvent>();
+        this._expiredEmitter = createSignal<ExpiredMessage<T>>();
+        this._programChangeEmitter = createSignal<midi.ProgramChangeEvent>();
 
         this._panner = this.audioContext.createPanner();
         this._gain = this.audioContext.createGain();

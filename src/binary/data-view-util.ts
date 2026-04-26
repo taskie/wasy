@@ -10,13 +10,15 @@ export function dataViewGetUint(dataView: DataView, byteOffset: number, isLittle
 	if (typeof byteLength === "undefined") {
 		byteLength = dataView.byteLength - byteOffset;
 	}
+	// Multiplication (not bit-shift) so the result stays representable as a
+	// JS number for byteLength up to 6 (Number.MAX_SAFE_INTEGER ≈ 2^53).
 	if (isLittleEndian) {
 		for (let i = byteLength - 1; i >= 0; --i) {
-			value = (value << 8) + dataView.getUint8(byteOffset + i);
+			value = value * 256 + dataView.getUint8(byteOffset + i);
 		}
 	} else {
 		for (let i = 0; i < byteLength; ++i) {
-			value = (value << 8) + dataView.getUint8(byteOffset + i);
+			value = value * 256 + dataView.getUint8(byteOffset + i);
 		}
 	}
 	return value;

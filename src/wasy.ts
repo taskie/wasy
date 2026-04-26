@@ -1,6 +1,6 @@
 import * as midi from "./midi/event.js";
 import * as timer from "./player/timer.js";
-import Signal from "./signal.js";
+import { createSignal, type Signal } from "./signal.js";
 import * as inst from "./midi/instrument.js";
 import { PatchGenerator } from "./synth.js";
 import { Monophony } from "./synth/patch.js";
@@ -52,7 +52,7 @@ export class Wasy {
 			});
 		}
 		this.paused = false;
-		this._emitter = new Signal<TimedEvent>();
+		this._emitter = createSignal<TimedEvent>();
 	}
 
 	play() {
@@ -76,7 +76,10 @@ export class Wasy {
 
 	destroy() {
 		this.timer.invalidate();
-		this.playerWorker = undefined;
+		if (this.playerWorker != null) {
+			this.playerWorker.terminate();
+			this.playerWorker = undefined;
+		}
 		this._emitter.offAll();
 		for (const instrument of this.instruments) {
 			instrument.destroy();

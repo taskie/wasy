@@ -1,4 +1,4 @@
-import Signal from "../signal.js";
+import { createSignal, type Signal } from "../signal.js";
 
 export class TimeStamp {
 	tick: number;
@@ -32,7 +32,7 @@ export class Timer {
 	constructor(public audioContext: AudioContext, public resolution: number = 480, public durationInSeconds: number = 0.2) {
 		this.beatsPerMinute = 120;
 		this.delayInSeconds = 0.2;
-		this._emitter = new Signal<TimeStamp>();
+		this._emitter = createSignal<TimeStamp>();
 	}
 
 	start() {
