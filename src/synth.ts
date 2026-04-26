@@ -318,6 +318,27 @@ const oscillatorTypeMap: ReadonlyMap<number, OscillatorType> = new Map([
 	[0x51, "sawtooth"],
 ]);
 
+// Per-category fallback (8 programs per GM category, 16 categories).
+// Used when `oscillatorTypeMap` has no entry for the program.
+const categoryDefaults: ReadonlyArray<OscillatorType> = [
+	"triangle", // 0x00 Piano
+	"sine",     // 0x08 Chromatic Percussion
+	"sine",     // 0x10 Organ
+	"sawtooth", // 0x18 Guitar
+	"triangle", // 0x20 Bass
+	"sawtooth", // 0x28 Strings
+	"sawtooth", // 0x30 Ensemble
+	"sawtooth", // 0x38 Brass
+	"square",   // 0x40 Reed
+	"triangle", // 0x48 Pipe
+	"sawtooth", // 0x50 Synth Lead
+	"triangle", // 0x58 Synth Pad
+	"sawtooth", // 0x60 Synth Effects
+	"square",   // 0x68 Ethnic
+	"square",   // 0x70 Percussive
+	"sine",     // 0x78 SFX
+];
+
 export const generatePatch = (
 	instrument: inst.Instrument<Monophony>,
 	program: number,
@@ -332,12 +353,9 @@ export const generatePatch = (
 	if (program === 0x7E) {
 		return new NoisePatch(instrument);
 	}
-	const oscillatorType = oscillatorTypeMap.get(program);
-	if (oscillatorType != null) {
-		if (program <= 0x05) {
-			return new GainedOscillatorPatch(instrument, 1.2, 0.1, 0.7, oscillatorType);
-		}
-		return new SimpleOscillatorPatch(instrument, oscillatorType);
+	const oscillatorType = oscillatorTypeMap.get(program) ?? categoryDefaults[program >> 3];
+	if (program <= 0x05) {
+		return new GainedOscillatorPatch(instrument, 1.2, 0.1, 0.7, oscillatorType);
 	}
-	return new SimpleOscillatorPatch(instrument, "square");
+	return new SimpleOscillatorPatch(instrument, oscillatorType);
 };
