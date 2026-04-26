@@ -24,7 +24,7 @@ const buildEvent = (dataView: DataView, tick: number, status: number, byteOffset
 			length = 2;
 			break;
 		case 0xB0:
-			length = 2;  // FIXME: OMNI OFF / MONO
+			length = 2;
 			break;
 		case 0xC0:
 		case 0xD0:

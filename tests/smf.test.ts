@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as xiff from "../src/xiff.js";
 import { parseSong } from "../src/smf.js";
-import { MetaEvent, NoteOffEvent, NoteOnEvent } from "../src/midi/event.js";
+import { ControlChangeEvent, MetaEvent, NoteOffEvent, NoteOnEvent } from "../src/midi/event.js";
 
 const buildSmf = () => {
     // MThd: format 0, 1 track, resolution 480 (0x01E0)
@@ -36,6 +36,42 @@ describe("xiff.parseChunks with SMF config", () => {
         expect(chunks[0].name).toBe("MThd");
         expect(chunks[1].name).toBe("MTrk");
         expect(chunks[0].dataView.byteLength).toBe(6);
+    });
+});
+
+const buildSmfWithChannelMode = () => {
+    // MThd: format 0, 1 track, resolution 480
+    const header = [
+        0x4d, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06,
+        0x00, 0x00, 0x00, 0x01, 0x01, 0xe0,
+    ];
+    // Track:
+    //   delta=0, CC ch0 #0x7C (Omni Off) value=0
+    //   delta=0, running status, CC #0x7E (Mono On) value=4
+    //   delta=0, EOT
+    const trackData = [
+        0x00, 0xb0, 0x7c, 0x00,
+        0x00, 0x7e, 0x04,
+        0x00, 0xff, 0x2f, 0x00,
+    ];
+    const track = [
+        0x4d, 0x54, 0x72, 0x6b, 0x00, 0x00, 0x00, trackData.length,
+        ...trackData,
+    ];
+    return Uint8Array.from([...header, ...track]).buffer;
+};
+
+describe("smf.parseSong (Channel Mode CCs)", () => {
+    it("consumes 2 data bytes for CC 0x7C and 0x7E", () => {
+        const song = parseSong(buildSmfWithChannelMode());
+        const events = song.tracks[0].events;
+        expect(events).toHaveLength(3);
+        expect(events[0]).toBeInstanceOf(ControlChangeEvent);
+        expect((events[0] as ControlChangeEvent).controller).toBe(0x7c);
+        expect(events[1]).toBeInstanceOf(ControlChangeEvent);
+        expect((events[1] as ControlChangeEvent).controller).toBe(0x7e);
+        expect((events[1] as ControlChangeEvent).value).toBe(4);
+        expect(events[2]).toBeInstanceOf(MetaEvent);
     });
 });
 

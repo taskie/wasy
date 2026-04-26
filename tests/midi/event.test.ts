@@ -56,6 +56,19 @@ describe("Event.create", () => {
         expect((event as ControlChangeEvent).value).toBe(0x64);
     });
 
+    it("dispatches ControlChange for Channel Mode messages (0x7C / 0x7E)", () => {
+        // 0x7C Omni Off (value must be 0)
+        const omniOff = Event.create(dv(0x7c, 0x00), 0, 0xb0);
+        expect(omniOff).toBeInstanceOf(ControlChangeEvent);
+        expect((omniOff as ControlChangeEvent).controller).toBe(0x7c);
+        expect((omniOff as ControlChangeEvent).value).toBe(0);
+        // 0x7E Mono On (value = number of channels M)
+        const monoOn = Event.create(dv(0x7e, 0x04), 0, 0xb0);
+        expect(monoOn).toBeInstanceOf(ControlChangeEvent);
+        expect((monoOn as ControlChangeEvent).controller).toBe(0x7e);
+        expect((monoOn as ControlChangeEvent).value).toBe(4);
+    });
+
     it("dispatches ProgramChange", () => {
         const event = Event.create(dv(0x10), 0, 0xc4);
         expect(event).toBeInstanceOf(ProgramChangeEvent);

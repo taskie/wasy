@@ -39,8 +39,7 @@ export class Timer {
 		this.currentTime = this.audioContext.currentTime;
 		this.oldTick = 0;
 		this.tick = 0;
-		this.invalidate();
-		this.timerId = setInterval(this.timing.bind(this), this.durationInSeconds * 1000);
+		this._scheduleInterval();
 	}
 
 	onTiming(listener: (timeStamp: TimeStamp) => void) {
@@ -76,6 +75,10 @@ export class Timer {
 	}
 
 	resume() {
+		this._scheduleInterval();
+	}
+
+	private _scheduleInterval() {
 		this.invalidate();
 		this.timerId = setInterval(this.timing.bind(this), this.durationInSeconds * 1000);
 	}
