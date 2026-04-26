@@ -29,7 +29,7 @@ export class Timer {
 	get beatsPerMinute() { return 60 / this.secondsPerBeat; }
 	set beatsPerMinute(bpm: number) { this.secondsPerBeat = 60 / bpm; }
 
-	constructor(public audioContext: AudioContext, public resolution: number = 480, public durationInSeconds: number = 0.2) {
+	constructor(public audioContext: AudioContext, public resolution: number = 480, public durationInSeconds: number = 0.025) {
 		this.beatsPerMinute = 120;
 		this.delayInSeconds = 0.2;
 		this._emitter = createSignal<TimeStamp>();
@@ -51,9 +51,14 @@ export class Timer {
 	}
 
 	timing() {
+		const now = this.audioContext.currentTime;
+		const elapsed = now - this.currentTime;
 		this.oldTick = this.tick;
-		this.tick += this.ticksPerSecond * this.durationInSeconds;
-		this.currentTime = this.audioContext.currentTime;
+		// Advance tick by the actual elapsed audio time, not an assumed
+		// `durationInSeconds`. This anchors musical time to the audio
+		// clock so setInterval jitter doesn't slow the music down.
+		this.tick += this.ticksPerSecond * elapsed;
+		this.currentTime = now;
 		this._emitter.emit(this.createTimeStamp());
 	}
 
@@ -75,6 +80,9 @@ export class Timer {
 	}
 
 	resume() {
+		// Reset the anchor to "now" so the first post-resume fire doesn't
+		// see the entire pause duration as elapsed audio time.
+		this.currentTime = this.audioContext.currentTime;
 		this._scheduleInterval();
 	}
 
