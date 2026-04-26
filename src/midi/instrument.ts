@@ -113,6 +113,10 @@ export class Instrument<T> {
     bankMSB!: number;       //  0
     bankLSB!: number;       // 32
 
+    // Channel-wide tuning (RPN 1 / RPN 2). Values are in cents.
+    fineTune!: number;      // RPN 1: ±100 cents  (14-bit, center 0x2000)
+    coarseTune!: number;    // RPN 2: ±64 semitones × 100 cents (7-bit MSB, center 0x40)
+
     dataEntry!: number;
     rpn!: number;
     nrpn!: number;
@@ -145,6 +149,9 @@ export class Instrument<T> {
 
         this.bankMSB = 0;
         this.bankLSB = 0;
+
+        this.fineTune = 0;
+        this.coarseTune = 0;
 
         this.dataEntry = 0;
         this.rpn = 0x3FFF;   // null RPN
@@ -180,8 +187,17 @@ export class Instrument<T> {
         this._gain.gain.setValueAtTime(this.volume / 127 * expression / 127, time);
     }
 
-    set detune(detune: number) { this.pitchBend = detune / 100 / this.pitchBendRange * 8192; }
-    get detune() { return this.pitchBend / 8192 * this.pitchBendRange * 100; }
+    // Total pitch offset in cents = pitchBend + fineTune + coarseTune × 100.
+    // The setter only adjusts pitchBend; fine/coarse tune stay as-is.
+    set detune(detune: number) {
+        const residual = detune - this.fineTune - this.coarseTune * 100;
+        this.pitchBend = residual / 100 / this.pitchBendRange * 8192;
+    }
+    get detune() {
+        return this.pitchBend / 8192 * this.pitchBendRange * 100
+            + this.fineTune
+            + this.coarseTune * 100;
+    }
 
     registerNote(noteNumber: number, data: T, time: number) {
         this.notePool.register(noteNumber, data, time);
@@ -302,6 +318,12 @@ export class Instrument<T> {
         switch (rpn) {
             case 0: // pitch bend range: MSB = semitones, LSB = cents
                 this.pitchBendRange = ((data >> 7) & 0x7F) + ((data & 0x7F) / 100);
+                break;
+            case 1: // channel fine tuning: 14-bit, center 0x2000, ±100 cents
+                this.fineTune = (data - 0x2000) / 0x2000 * 100;
+                break;
+            case 2: // channel coarse tuning: MSB only, center 0x40, ±64 semitones
+                this.coarseTune = ((data >> 7) & 0x7F) - 0x40;
                 break;
             default:
                 break;
