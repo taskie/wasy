@@ -13,7 +13,7 @@ class PlayerWorker {
 	messageListener(event: MessageEvent) {
 		switch (event.data.type) {
 			case "init":
-				this.player = new player.Player(event.data.buffer);
+				this.player = player.createPlayer(event.data.buffer);
 				break;
 			case "read": {
 				const timeStamp: timer.TimeStamp = event.data.timeStamp;

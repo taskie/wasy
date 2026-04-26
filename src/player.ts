@@ -1,22 +1,27 @@
 import * as midi from "./midi/event.js";
 import * as smf from "./smf.js";
 
-export class Player {
-	public song: smf.Song;
-	public cursors: number[];
-	constructor(buffer: ArrayBuffer) {
-		this.song = smf.parseSong(buffer);
-		this.cursors = Array.from({ length: this.numberOfTracks }, () => 0);
-	}
-	get resolution() { return this.song.header.resolution; }
-	get numberOfTracks() { return this.song.header.numberOfTracks; }
-	public read(tick: number) {
+export interface Player {
+	song: smf.Song;
+	cursors: number[];
+	resolution: number;
+	numberOfTracks: number;
+	read(tick: number): midi.Event[][];
+}
+
+export const createPlayer = (buffer: ArrayBuffer): Player => {
+	const song = smf.parseSong(buffer);
+	const numberOfTracks = song.header.numberOfTracks;
+	const resolution = song.header.resolution;
+	const cursors = Array.from({ length: numberOfTracks }, () => 0);
+
+	const read = (tick: number): midi.Event[][] => {
 		const newEventsStore: midi.Event[][] = [];
 		for (let i = 0; i < 16; ++i) {
 			newEventsStore[i] = [];
 		}
-		this.song.tracks.forEach((track, trackNumber) => {
-			for (let i = this.cursors[trackNumber]; i < track.events.length; ++i) {
+		song.tracks.forEach((track, trackNumber) => {
+			for (let i = cursors[trackNumber]; i < track.events.length; ++i) {
 				const event = track.events[i];
 				if (event.tick > tick) break;
 				if (event instanceof midi.ChannelEvent) {
@@ -26,9 +31,11 @@ export class Player {
 						events.push(event);
 					}
 				}
-				this.cursors[trackNumber] = i + 1;
+				cursors[trackNumber] = i + 1;
 			}
 		});
 		return newEventsStore;
-	}
-}
+	};
+
+	return { song, cursors, resolution, numberOfTracks, read };
+};

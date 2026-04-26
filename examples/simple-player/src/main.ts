@@ -113,7 +113,7 @@ class Application {
     private timerId: ReturnType<typeof setInterval> | null = null;
     private songs: Song[] = [];
     private songDirectory = "./midi/";
-    private midiIns: midiIn.MIDIIn[] = [];
+    private midiIns: midiIn.MidiInput[] = [];
 
     start() {
         document.addEventListener("DOMContentLoaded", () => {
@@ -132,8 +132,8 @@ class Application {
         this.keyboardView = new KeyboardView(this.canvasContext);
         this.analyserView = new AnalyserView(this.canvasContext);
 
-        this.midiIns.push(new midiIn.WebMIDIIn());
-        this.midiIns.push(new midiIn.WebMidiLinkIn());
+        this.midiIns.push(midiIn.createWebMidiInput());
+        this.midiIns.push(midiIn.createWebMidiLinkInput());
         for (const input of this.midiIns) {
             input.on((e) => this.midiEventListener(e));
         }

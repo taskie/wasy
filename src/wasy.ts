@@ -2,7 +2,7 @@ import * as midi from "./midi/event.js";
 import * as timer from "./player/timer.js";
 import { createSignal, type Signal } from "./signal.js";
 import * as inst from "./midi/instrument.js";
-import { PatchGenerator } from "./synth.js";
+import { generatePatch } from "./synth.js";
 import { Monophony } from "./synth/patch.js";
 
 export interface TimedEvent {
@@ -16,7 +16,6 @@ export class Wasy {
 	gain: GainNode;
 	dynamicsCompressor: DynamicsCompressorNode;
 	playerWorker?: Worker;
-	patchGenerator: PatchGenerator;
 	paused: boolean;
 	private _emitter: Signal<TimedEvent>;
 
@@ -33,7 +32,6 @@ export class Wasy {
 		}
 		this.timer = new timer.Timer(this.audioContext);
 		this.timer.onTiming(this.timingListener.bind(this));
-		this.patchGenerator = new PatchGenerator();
 		this.instruments = [];
 		this.gain = this.audioContext.createGain();
 		this.gain.gain.value = 0.1;
@@ -42,13 +40,13 @@ export class Wasy {
 		this.dynamicsCompressor.connect(destination);
 		for (let i = 0; i < 16; ++i) {
 			const instrument = new inst.Instrument<Monophony>(this.audioContext, this.gain);
-			instrument.patch = this.patchGenerator.generate(instrument, 0, i === 9);
+			instrument.patch = generatePatch(instrument, 0, i === 9);
 			this.instruments[i] = instrument;
 			instrument.onExpired((data: inst.ExpiredMessage<Monophony>) => {
 				data.data.parentPatch.onExpired(data.data, data.time);
 			});
 			instrument.onProgramChange((event: midi.ProgramChangeEvent) => {
-				instrument.patch = this.patchGenerator.generate(instrument, event.program, i === 9);
+				instrument.patch = generatePatch(instrument, event.program, i === 9);
 			});
 		}
 		this.paused = false;

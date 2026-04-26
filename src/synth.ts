@@ -293,49 +293,51 @@ export class DrumKitPatch extends Patch<Monophony> {
 	}
 }
 
-export class PatchGenerator {
-	generate(instrument: inst.Instrument<Monophony>, program: number, isDrum = false): Patch<Monophony> {
-		const simpleMap: { [key: number]: OscillatorType } = {
-			0x00: "sine",
-			0x01: "triangle",
-			0x02: "triangle",
-			0x03: "triangle",
-			0x04: "triangle",
-			0x05: "triangle",
+const oscillatorTypeMap: ReadonlyMap<number, OscillatorType> = new Map([
+	[0x00, "sine"],
+	[0x01, "triangle"],
+	[0x02, "triangle"],
+	[0x03, "triangle"],
+	[0x04, "triangle"],
+	[0x05, "triangle"],
 
-			0x10: "sine",
-			0x11: "sine",
-			0x12: "sine",
-			0x13: "sine",
-			0x14: "triangle",
+	[0x10, "sine"],
+	[0x11, "sine"],
+	[0x12, "sine"],
+	[0x13, "sine"],
+	[0x14, "triangle"],
 
-			0x1D: "sawtooth",
-			0x1E: "sawtooth",
+	[0x1D, "sawtooth"],
+	[0x1E, "sawtooth"],
 
-			0x30: "triangle",
-			0x31: "triangle",
-			0x32: "triangle",
-			0x33: "triangle",
+	[0x30, "triangle"],
+	[0x31, "triangle"],
+	[0x32, "triangle"],
+	[0x33, "triangle"],
 
-			0x51: "sawtooth",
-		};
-		if (isDrum) {
-			return new DrumKitPatch(instrument);
-		} else {
-			if (program === 0x77) {
-				return new GainedNoisePatch(instrument, 0, 1, 1);
-			} else if (program === 0x7E) {
-				return new NoisePatch(instrument);
-			} else if (program in simpleMap) {
-				const oscillatorType = simpleMap[program];
-				if (program <= 0x05) {
-					return new GainedOscillatorPatch(instrument, 1.2, 0.1, 0.7, oscillatorType);
-				} else {
-					return new SimpleOscillatorPatch(instrument, oscillatorType);
-				}
-			} else {
-				return new SimpleOscillatorPatch(instrument, "square");
-			}
-		}
+	[0x51, "sawtooth"],
+]);
+
+export const generatePatch = (
+	instrument: inst.Instrument<Monophony>,
+	program: number,
+	isDrum = false,
+): Patch<Monophony> => {
+	if (isDrum) {
+		return new DrumKitPatch(instrument);
 	}
-}
+	if (program === 0x77) {
+		return new GainedNoisePatch(instrument, 0, 1, 1);
+	}
+	if (program === 0x7E) {
+		return new NoisePatch(instrument);
+	}
+	const oscillatorType = oscillatorTypeMap.get(program);
+	if (oscillatorType != null) {
+		if (program <= 0x05) {
+			return new GainedOscillatorPatch(instrument, 1.2, 0.1, 0.7, oscillatorType);
+		}
+		return new SimpleOscillatorPatch(instrument, oscillatorType);
+	}
+	return new SimpleOscillatorPatch(instrument, "square");
+};
