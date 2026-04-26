@@ -21,6 +21,15 @@ class PlayerWorker {
 				ctx.postMessage({ type: "read", newEventsStore, timeStamp });
 				break;
 			}
+			case "seek": {
+				const tick: number = event.data.tick;
+				for (let i = 0; i < this.player.numberOfTracks; ++i) {
+					this.player.cursors[i] = 0;
+				}
+				const newEventsStore = this.player.read(tick);
+				ctx.postMessage({ type: "seek", newEventsStore, tick });
+				break;
+			}
 			case "resolution":
 				ctx.postMessage({ type: "resolution", resolution: this.player.resolution });
 				break;

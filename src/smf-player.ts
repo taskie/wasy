@@ -39,6 +39,21 @@ export class SmfPlayer {
 		this.paused = false;
 	}
 
+	seek(tick: number) {
+		if (this.playerWorker == null) return;
+		const wasPaused = this.paused;
+		this.timer.invalidate();
+		this.paused = true;
+		this.timer.tick = tick;
+		this.timer.oldTick = tick;
+		this.timer.currentTime = this.audioContext.currentTime;
+		this.playerWorker.postMessage({ type: "seek", tick });
+		if (!wasPaused) {
+			this.paused = false;
+			this.timer.resume();
+		}
+	}
+
 	load(buffer: ArrayBuffer) {
 		this.unload();
 		this._initPlayerWorker(buffer);
@@ -101,6 +116,34 @@ export class SmfPlayer {
 						// Non-channel events are duplicated across all 16 buckets by the worker;
 						// emit them once via the channel-0 bucket so listeners (and the synth engine)
 						// see exactly one TimedEvent per source MIDI event.
+						if (isChannelEvent || channelNumber === 0) {
+							this._emitter.emit({ timeStamp, midiEvent });
+						}
+						if (channelNumber === 0 && midiEvent instanceof midi.TempoMetaEvent) {
+							this.timer.secondsPerBeat = midiEvent.secondsPerBeat;
+						}
+					}
+				});
+				break;
+			}
+			case "seek": {
+				const newEventsStore: midi.Event[][] = event.data.newEventsStore;
+				const tick: number = event.data.tick;
+				const timeStamp = this.timer.createTimeStamp();
+				timeStamp.currentTime = this.audioContext.currentTime;
+				timeStamp.tick = tick;
+				timeStamp.oldTick = tick;
+				newEventsStore.forEach((newEvents, channelNumber) => {
+					for (const newEvent of newEvents) {
+						const midiEvent = midi.Event.create(newEvent.dataView, newEvent.tick, newEvent.status);
+						// Skip note events: we don't want to retrigger notes that were
+						// active before the seek target. State events (ProgramChange,
+						// ControlChange, PitchBend, Tempo, etc.) are replayed so the
+						// synth state matches what it would have been at `tick`.
+						if (midiEvent instanceof midi.NoteOnEvent || midiEvent instanceof midi.NoteOffEvent) {
+							continue;
+						}
+						const isChannelEvent = midiEvent instanceof midi.ChannelEvent;
 						if (isChannelEvent || channelNumber === 0) {
 							this._emitter.emit({ timeStamp, midiEvent });
 						}

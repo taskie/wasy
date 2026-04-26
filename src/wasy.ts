@@ -41,6 +41,11 @@ export class Wasy {
 		this.player.resume();
 	}
 
+	seek(tick: number) {
+		this.engine.pause();
+		this.player.seek(tick);
+	}
+
 	load(buffer: ArrayBuffer) {
 		this.engine.pause();
 		this.player.load(buffer);
