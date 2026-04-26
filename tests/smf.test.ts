@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as xiff from "../src/xiff.js";
-import { Song } from "../src/smf.js";
+import { parseSong } from "../src/smf.js";
 import { MetaEvent, NoteOffEvent, NoteOnEvent } from "../src/midi/event.js";
 
 const buildSmf = () => {
@@ -29,28 +29,26 @@ const buildSmf = () => {
     return Uint8Array.from([...header, ...track]).buffer;
 };
 
-describe("xiff.load with SMF config", () => {
+describe("xiff.parseChunks with SMF config", () => {
     it("parses MThd and MTrk chunks", () => {
-        const root = xiff.load(buildSmf(), xiff.configs.smf);
-        expect(root.children).toHaveLength(2);
-        expect(root.children[0].name).toBe("MThd");
-        expect(root.children[1].name).toBe("MTrk");
-        expect(root.children[0].dataView.byteLength).toBe(6);
+        const chunks = xiff.parseChunks(buildSmf(), xiff.configs.smf);
+        expect(chunks).toHaveLength(2);
+        expect(chunks[0].name).toBe("MThd");
+        expect(chunks[1].name).toBe("MTrk");
+        expect(chunks[0].dataView.byteLength).toBe(6);
     });
 });
 
-describe("smf.Song", () => {
+describe("smf.parseSong", () => {
     it("loads header fields", () => {
-        const song = new Song(buildSmf());
-        song.load();
+        const song = parseSong(buildSmf());
         expect(song.header.format).toBe(0);
         expect(song.header.numberOfTracks).toBe(1);
         expect(song.header.resolution).toBe(480);
     });
 
     it("loads one track with three events", () => {
-        const song = new Song(buildSmf());
-        song.load();
+        const song = parseSong(buildSmf());
         expect(song.tracks).toHaveLength(1);
         const events = song.tracks[0].events;
         expect(events).toHaveLength(3);
@@ -60,8 +58,7 @@ describe("smf.Song", () => {
     });
 
     it("computes cumulative ticks from delta-time VLQs", () => {
-        const song = new Song(buildSmf());
-        song.load();
+        const song = parseSong(buildSmf());
         const events = song.tracks[0].events;
         expect(events[0].tick).toBe(0);
         expect(events[1].tick).toBe(480);
@@ -69,8 +66,7 @@ describe("smf.Song", () => {
     });
 
     it("decodes a NoteOn velocity > 0 followed by an explicit NoteOff", () => {
-        const song = new Song(buildSmf());
-        song.load();
+        const song = parseSong(buildSmf());
         const [on, off] = song.tracks[0].events as [NoteOnEvent, NoteOffEvent, ...unknown[]];
         expect(on.noteNumber).toBe(60);
         expect(on.velocity).toBe(64);

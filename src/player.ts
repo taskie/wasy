@@ -5,8 +5,7 @@ export class Player {
 	public song: smf.Song;
 	public cursors: number[];
 	constructor(buffer: ArrayBuffer) {
-		this.song = new smf.Song(buffer);
-		this.song.load();
+		this.song = smf.parseSong(buffer);
 		this.cursors = Array.from({ length: this.numberOfTracks }, () => 0);
 	}
 	get resolution() { return this.song.header.resolution; }
