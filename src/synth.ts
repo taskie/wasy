@@ -57,21 +57,26 @@ export class NoiseMonophony extends Monophony {
 	gain!: GainNode;
 }
 
+const noiseBufferCache = new WeakMap<BaseAudioContext, AudioBuffer>();
+
 export class NoisePatch extends Patch<NoiseMonophony> {
-	static noiseBuffer: AudioBuffer;
+	noiseBuffer: AudioBuffer;
 	constructor(instrument: inst.Instrument<Monophony>, destination?: AudioNode) {
 		super(instrument, destination);
-		if (NoisePatch.noiseBuffer == null) {
-			const frame = 44100 * 2;
-			const buf = this.audioContext.createBuffer(2, frame, this.audioContext.sampleRate);
+		const ctx = this.audioContext;
+		let buf = noiseBufferCache.get(ctx);
+		if (buf == null) {
+			const frame = ctx.sampleRate * 2;
+			buf = ctx.createBuffer(2, frame, ctx.sampleRate);
 			const data0 = buf.getChannelData(0);
 			const data1 = buf.getChannelData(1);
 			for (let i = 0; i < data0.length; ++i) {
 				data0[i] = (Math.random() * 2 - 1);
 				data1[i] = (Math.random() * 2 - 1);
 			}
-			NoisePatch.noiseBuffer = buf;
+			noiseBufferCache.set(ctx, buf);
 		}
+		this.noiseBuffer = buf;
 	}
 	override onNoteOn(event: midi.NoteOnEvent, time: number): NoiseMonophony {
 		// initialize
@@ -86,7 +91,7 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 		monophony.detunableNodes = [filter];
 
 		// settings
-		source.buffer = NoisePatch.noiseBuffer;
+		source.buffer = this.noiseBuffer;
 		source.loop = true;
 		filter.type = "bandpass";
 		filter.frequency.value = this.tuning.frequency(event.noteNumber + 24);

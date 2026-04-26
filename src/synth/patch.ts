@@ -60,12 +60,12 @@ export class Patch<T extends Monophony> implements inst.Patch<T> {
 	}
 
 	onPitchBend(event: midi.PitchBendEvent, monophony: T, time: number) {
-		if (monophony.detunableNodes != null) {
-			for (const node of monophony.detunableNodes) {
-				const oscillator = node as OscillatorNode;
-				this.instrument.pitchBend = event.value;
-				oscillator.detune.setValueAtTime(this.detune, time);
-			}
+		if (monophony.detunableNodes == null) return;
+		this.instrument.pitchBend = event.value;
+		const detune = this.detune;
+		for (const node of monophony.detunableNodes) {
+			const oscillator = node as OscillatorNode;
+			oscillator.detune.setValueAtTime(detune, time);
 		}
 	}
 }

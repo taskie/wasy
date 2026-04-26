@@ -219,13 +219,14 @@ export class Instrument<T> {
                     this.setExpression(event.value, time);
                     break;
                 case 6:     // DataEntryMSB
-                    this.dataEntry &= 0b11111110000000;
-                    this.dataEntry |= event.value;
+                    this.dataEntry &= 0b00000001111111;
+                    this.dataEntry |= event.value << 7;
                     this.receiveRPN(this.rpn, this.dataEntry, time);
                     break;
                 case 38:    // DataEntryLSB
-                    this.dataEntry &= 0b00000001111111;
-                    this.dataEntry |= event.value << 7;
+                    this.dataEntry &= 0b11111110000000;
+                    this.dataEntry |= event.value;
+                    this.receiveRPN(this.rpn, this.dataEntry, time);
                     break;
                 case 100: // RPN LSB
                     this.rpn &= 0b11111110000000;
@@ -258,8 +259,8 @@ export class Instrument<T> {
 
     receiveRPN(rpn: number, data: number, _time: number) {
         switch (rpn) {
-            case 0: // pitch bend range
-                this.pitchBendRange = data;
+            case 0: // pitch bend range: MSB = semitones, LSB = cents
+                this.pitchBendRange = ((data >> 7) & 0x7F) + ((data & 0x7F) / 100);
                 break;
             default:
                 break;

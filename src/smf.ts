@@ -106,5 +106,8 @@ export class Song {
 					break;
 			}
 		});
+		if (this.header != null && this.header.format === 2) {
+			console.warn("wasy: SMF Format 2 is not supported; tracks will be played as if Format 1.");
+		}
 	}
 }

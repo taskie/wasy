@@ -27,7 +27,6 @@ export class WebMIDIIn extends MIDIIn {
 		if (typeof navigator.requestMIDIAccess !== "function") { return; }
 		navigator.requestMIDIAccess().then((midiAccess) => {
 			for (const input of midiAccess.inputs.values()) {
-				console.log(input);
 				input.onmidimessage = (event) => {
 					if (!event.data) return;
 					const dataView = new DataView(event.data.buffer);
