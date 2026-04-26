@@ -15,6 +15,9 @@
         "dist",
         "src"
     ],
+    "workspaces": [
+        "examples/*"
+    ],
     "scripts": {
         "build": "tsc",
         "clean": "rm -rf dist",

@@ -1,0 +1,22 @@
+body {
+    color: #dc322f;
+    background-color: #002b36;
+    font-family: system-ui, sans-serif;
+}
+
+div.partition {
+    width: 640px;
+    margin: 5px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #dc322f;
+}
+
+canvas {
+    margin: 0;
+    display: block;
+}
+
+a {
+    color: #dc322f;
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Wasy Simple Player</title>
+    </head>
+    <body>
+        <h1>wasy example</h1>
+        <div class="partition">
+            <form>
+                <label>
+                    <input id="userFileRadio" type="radio" name="midiSource" value="userFile" checked />
+                    アップロードしたファイル
+                </label>
+                <input id="fileButton" type="file" accept=".mid,.midi,audio/midi" />
+                <br />
+                <label>
+                    <input id="serverFileRadio" type="radio" name="midiSource" value="serverFile" />
+                    サーバ上のサンプル
+                </label>
+                <select id="fileSelector"></select>
+                <br />
+                <input id="playButton" type="button" value="play" />
+                <input id="pauseButton" type="button" value="pause" />
+            </form>
+        </div>
+        <div class="partition">
+            <canvas id="keyboardCanvas" width="640" height="480"></canvas>
+        </div>
+        <h2>対応状況</h2>
+        <ul>
+            <li>
+                General MIDI
+                <ul>
+                    <li>volume, panpot, expression</li>
+                    <li>pitch bend, pitch bend range</li>
+                    <li>all sound off, reset all control</li>
+                </ul>
+            </li>
+            <li>Web MIDI API</li>
+            <li>WebMidiLink</li>
+        </ul>
+        <h2>ソースコード</h2>
+        <ul>
+            <li><a href="https://github.com/taskie/wasy">taskie/wasy (GitHub)</a></li>
+        </ul>
+        <script type="module" src="./src/main.ts"></script>
+    </body>
+</html>
