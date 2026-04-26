@@ -7,3 +7,8 @@ export {
     midiIn,
     midi,
 };
+
+export { Wasy } from "./wasy.js";
+export type { TimedEvent } from "./wasy.js";
+export { SmfPlayer } from "./smf-player.js";
+export { SynthEngine } from "./synth-engine.js";
