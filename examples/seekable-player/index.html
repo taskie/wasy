@@ -42,6 +42,18 @@
             <p class="hint">縦軸 = 音高、横軸 = 時間。赤い縦線が現在位置 (now line)。チャネルごとに色分け、ch 10 (drums) はグレー。</p>
         </section>
 
+        <section class="partition">
+            <h2>チャネル別ノート (16ch × 128key)</h2>
+            <canvas id="keyboardCanvas" width="640" height="192"></canvas>
+            <p class="hint">縦軸 = MIDI チャネル (ch 1〜16)、横軸 = キー番号 (0〜127)。鳴っている音はチャネル色で点灯。</p>
+        </section>
+
+        <section class="partition">
+            <h2>波形 / スペクトル</h2>
+            <canvas id="analyserCanvas" width="640" height="160"></canvas>
+            <p class="hint">合成出力 → AnalyserNode → destination。塗り = 周波数領域、線 = 時間領域。</p>
+        </section>
+
         <section class="partition footnote">
             <h2>このサンプルが示していること</h2>
             <ul>
