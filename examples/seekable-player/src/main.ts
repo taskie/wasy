@@ -10,6 +10,7 @@ import { extractSongMetadata, type SongMetadata } from "./metadata.js";
 import { PianoRollView } from "./piano-roll-view.js";
 import { KeyboardView } from "./keyboard-view.js";
 import { AnalyserView } from "./analyser-view.js";
+import { MixerView } from "./mixer-view.js";
 
 interface SongMeta {
     format: number;
@@ -61,6 +62,7 @@ class Application {
     private pianoRollView!: PianoRollView;
     private keyboardView!: KeyboardView;
     private analyserView!: AnalyserView;
+    private mixerView!: MixerView;
     private isUserSeeking = false;
     private hasBuffer = false;
 
@@ -107,6 +109,8 @@ class Application {
             analyserCanvas.height,
         );
 
+        this.mixerView = new MixerView(q<HTMLElement>("#mixer"));
+
         this.fileButton.addEventListener("change", (e) => this.onFileChange(e));
         this.playButton.addEventListener("click", () => this.onPlay());
         this.pauseButton.addEventListener("click", () => this.onPause());
@@ -145,6 +149,7 @@ class Application {
             this.synth = new SynthEngine(ctx, analyser);
             this.player = new SmfPlayer(ctx);
             this.player.onTimedEvent((e) => this.onTimedEvent(e));
+            this.mixerView.setSynth(this.synth);
         }
         if (this.audioContext.state === "suspended") {
             // Awaited so that audioContext.currentTime is actually advancing
