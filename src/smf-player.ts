@@ -12,6 +12,13 @@ export class SmfPlayer {
 	playerWorker?: Worker;
 	paused: boolean;
 	private _emitter: Signal<TimedEvent>;
+	// Resolves when the worker has finished parsing the SMF and replied to
+	// `resolution`. `read` postings are gated on this so the queue does not
+	// fill up during worker init and flush back with stale timeStamps —
+	// which manifested as "drums fire immediately" at playback start.
+	private _readyPromise: Promise<void> = Promise.resolve();
+	private _resolveReady: (() => void) | null = null;
+	private _workerReady = false;
 
 	constructor(public audioContext: AudioContext, buffer?: ArrayBuffer) {
 		this.timer = new timer.Timer(audioContext);
@@ -21,6 +28,10 @@ export class SmfPlayer {
 		if (buffer != null) {
 			this._initPlayerWorker(buffer);
 		}
+	}
+
+	get ready(): Promise<void> {
+		return this._readyPromise;
 	}
 
 	play() {
@@ -54,9 +65,10 @@ export class SmfPlayer {
 		}
 	}
 
-	load(buffer: ArrayBuffer) {
+	load(buffer: ArrayBuffer): Promise<void> {
 		this.unload();
 		this._initPlayerWorker(buffer);
+		return this._readyPromise;
 	}
 
 	unload() {
@@ -68,6 +80,13 @@ export class SmfPlayer {
 			this.playerWorker = undefined;
 		}
 		this.paused = false;
+		this._workerReady = false;
+		// Settle any pending ready Promise so awaiters don't hang. Callers
+		// that re-load will get a fresh Promise from the next `load()`.
+		if (this._resolveReady != null) {
+			this._resolveReady();
+			this._resolveReady = null;
+		}
 	}
 
 	destroy() {
@@ -92,6 +111,10 @@ export class SmfPlayer {
 			new URL("./player/player-worker.js", import.meta.url),
 			{ type: "module" },
 		);
+		this._workerReady = false;
+		this._readyPromise = new Promise<void>((resolve) => {
+			this._resolveReady = resolve;
+		});
 		const initMessage = { type: "init", buffer };
 		this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
 		this.playerWorker.postMessage({ type: "resolution" });
@@ -102,6 +125,11 @@ export class SmfPlayer {
 		switch (event.data.type) {
 			case "resolution":
 				this.timer.resolution = event.data.resolution;
+				this._workerReady = true;
+				if (this._resolveReady != null) {
+					this._resolveReady();
+					this._resolveReady = null;
+				}
 				break;
 			case "read": {
 				if (this.paused) break;
@@ -160,7 +188,10 @@ export class SmfPlayer {
 	}
 
 	private _timingListener(timeStamp: timer.TimeStamp) {
-		if (this.playerWorker != null) {
+		// Skip while the worker is still parsing — postings would queue up
+		// and flush back with a stale `timeStamp.currentTime`, scheduling
+		// every backlog event at a past audio time.
+		if (this.playerWorker != null && this._workerReady) {
 			this.playerWorker.postMessage({ type: "read", timeStamp });
 		}
 	}

@@ -243,7 +243,7 @@ class Application {
         this.wasy?.receiveExternalMidiEvent(e);
     }
 
-    playWithBuffer(buffer?: ArrayBuffer) {
+    async playWithBuffer(buffer?: ArrayBuffer) {
         if (this.wasy != null) {
             this.wasy.destroy();
             this.wasy = null;
@@ -259,9 +259,17 @@ class Application {
         this.analyserView.analyser = this.analyser;
         this.analyser.smoothingTimeConstant = 0;
 
-        this.wasy = new wasy.Wasy(this.audioContext, this.analyser, buffer);
-        this.wasy.play();
-        this.wasy.onTimedEvent(this.keyboardView.timedEventListener.bind(this.keyboardView));
+        const w = new wasy.Wasy(this.audioContext, this.analyser, buffer);
+        this.wasy = w;
+        // Wait for the worker to finish parsing the SMF before starting the
+        // timer. Without this, queued `read` postings flush back with a
+        // stale `timeStamp.currentTime` and tick-0 events fire immediately.
+        await w.ready;
+        // playWithBuffer can be called again before this awaits resolves
+        // (different file selected). If so, drop this play.
+        if (this.wasy !== w) return;
+        w.play();
+        w.onTimedEvent(this.keyboardView.timedEventListener.bind(this.keyboardView));
         this.timerId = setInterval(() => {
             this.analyserView.draw();
             this.keyboardView.draw();

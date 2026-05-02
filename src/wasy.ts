@@ -46,9 +46,13 @@ export class Wasy {
 		this.player.seek(tick);
 	}
 
-	load(buffer: ArrayBuffer) {
+	load(buffer: ArrayBuffer): Promise<void> {
 		this.engine.pause();
-		this.player.load(buffer);
+		return this.player.load(buffer);
+	}
+
+	get ready(): Promise<void> {
+		return this.player.ready;
 	}
 
 	unload() {

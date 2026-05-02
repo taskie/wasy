@@ -200,7 +200,11 @@ class Application {
         this.keyboardView.clear();
 
         synth.pause();
-        player.load(buffer);
+        // Await the worker's `resolution` reply before starting the timer.
+        // Otherwise `read` postings queue up during worker SMF parsing and
+        // flush back with a stale `timeStamp.currentTime`, scheduling tick=0
+        // events at a past audio time (Web Audio fires those immediately).
+        await player.load(buffer);
         this.hasBuffer = true;
         player.play();
         this.refreshButtons();
