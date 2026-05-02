@@ -6,6 +6,7 @@ import {
 } from "wasy";
 import "./style.css";
 import { computeDurationTicks } from "./notes.js";
+import { extractSongMetadata, type SongMetadata } from "./metadata.js";
 import { PianoRollView } from "./piano-roll-view.js";
 import { KeyboardView } from "./keyboard-view.js";
 import { AnalyserView } from "./analyser-view.js";
@@ -15,6 +16,7 @@ interface SongMeta {
     numberOfTracks: number;
     resolution: number;
     durationTicks: number;
+    text: SongMetadata;
 }
 
 const q = <T extends Element>(selector: string): T => {
@@ -48,6 +50,13 @@ class Application {
     private metaTracks!: HTMLElement;
     private metaResolution!: HTMLElement;
     private metaDuration!: HTMLElement;
+    private metaTitle!: HTMLElement;
+    private metaCopyright!: HTMLElement;
+    private metaTrackNames!: HTMLElement;
+    private metaInstrumentNames!: HTMLElement;
+    private metaMarkers!: HTMLElement;
+    private metaText!: HTMLElement;
+    private metaExtraDetails!: HTMLDetailsElement;
 
     private pianoRollView!: PianoRollView;
     private keyboardView!: KeyboardView;
@@ -67,6 +76,13 @@ class Application {
         this.metaTracks = q<HTMLElement>("#metaTracks");
         this.metaResolution = q<HTMLElement>("#metaResolution");
         this.metaDuration = q<HTMLElement>("#metaDuration");
+        this.metaTitle = q<HTMLElement>("#metaTitle");
+        this.metaCopyright = q<HTMLElement>("#metaCopyright");
+        this.metaTrackNames = q<HTMLElement>("#metaTrackNames");
+        this.metaInstrumentNames = q<HTMLElement>("#metaInstrumentNames");
+        this.metaMarkers = q<HTMLElement>("#metaMarkers");
+        this.metaText = q<HTMLElement>("#metaText");
+        this.metaExtraDetails = q<HTMLDetailsElement>("#metaExtraDetails");
 
         const pianoRollCanvas = q<HTMLCanvasElement>("#pianoRollCanvas");
         this.pianoRollView = new PianoRollView(
@@ -194,6 +210,7 @@ class Application {
             numberOfTracks: song.header.numberOfTracks,
             resolution: song.header.resolution,
             durationTicks: computeDurationTicks(song),
+            text: extractSongMetadata(song),
         };
         this.refreshMeta();
         this.pianoRollView.setSong(song);
@@ -219,6 +236,31 @@ class Application {
         this.seekBar.max = String(this.meta.durationTicks);
         this.seekBar.value = "0";
         this.seekBar.disabled = false;
+
+        const t = this.meta.text;
+        this.metaTitle.textContent = t.title ?? "-";
+        this.metaCopyright.textContent =
+            t.copyright.length > 0 ? t.copyright.join(" / ") : "-";
+        this.metaTrackNames.textContent =
+            t.trackNames.length > 0
+                ? t.trackNames.map((x) => `#${x.trackIndex} ${x.name}`).join(", ")
+                : "-";
+        this.metaInstrumentNames.textContent =
+            t.instrumentNames.length > 0
+                ? t.instrumentNames.map((x) => `#${x.trackIndex} ${x.name}`).join(", ")
+                : "-";
+        this.metaMarkers.textContent =
+            t.markers.length > 0
+                ? t.markers.map((x) => `${x.tick}: ${x.text}`).join(", ")
+                : "-";
+        this.metaText.textContent =
+            t.text.length > 0 ? t.text.join(" / ") : "-";
+        const hasExtra =
+            t.trackNames.length > 0 ||
+            t.instrumentNames.length > 0 ||
+            t.markers.length > 0 ||
+            t.text.length > 0;
+        this.metaExtraDetails.hidden = !hasExtra;
     }
 
     private async onPlay() {

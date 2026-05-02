@@ -77,6 +77,13 @@ export class MetaEvent extends FxEvent {
 	static override create(dataView: DataView, tick: number, status: number): MetaEvent {
 		if (!this.typeIndexEventMap) {
 			this.typeIndexEventMap = {
+				0x01: TextMetaEvent,
+				0x02: CopyrightMetaEvent,
+				0x03: SequenceTrackNameMetaEvent,
+				0x04: InstrumentNameMetaEvent,
+				0x05: LyricMetaEvent,
+				0x06: MarkerMetaEvent,
+				0x07: CuePointMetaEvent,
 				0x51: TempoMetaEvent,
 			};
 		}
@@ -93,16 +100,35 @@ export class MetaEvent extends FxEvent {
 		const { value, byteLength } = dvu.dataViewGetUintVariable(this.dataView, 1);
 		return dvu.dataViewGetSubDataView(this.dataView, 1 + byteLength, value);
 	}
-	// Decode meta-event payload as text. SMF predates UTF-8 and Japanese
-	// titles/lyrics are commonly Shift_JIS, but TextDecoder("shift_jis")
-	// is also widely supported now. Default to UTF-8; callers that know
-	// the encoding can pass it explicitly.
-	text(encoding: string = "utf-8"): string {
+	// Decode meta-event payload as text. SMF predates UTF-8 and the spec
+	// leaves the encoding unspecified — Japanese SMFs are commonly Shift_JIS.
+	// When `encoding` is omitted we try strict UTF-8 first and fall back to
+	// Shift_JIS on invalid bytes. Callers that know the encoding can pass
+	// it explicitly to skip the probe.
+	text(encoding?: string): string {
 		const data = this.data;
 		const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-		return new TextDecoder(encoding, { fatal: false }).decode(bytes);
+		if (encoding != null) {
+			return new TextDecoder(encoding, { fatal: false }).decode(bytes);
+		}
+		try {
+			return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+		} catch {
+			return new TextDecoder("shift_jis", { fatal: false }).decode(bytes);
+		}
 	}
 }
+
+// Standard text meta events (typeIndex 0x01-0x07). All share `MetaEvent.text()`
+// — distinct subclasses exist so consumers can branch on `instanceof` instead
+// of comparing `typeIndex` numbers.
+export class TextMetaEvent extends MetaEvent { }
+export class CopyrightMetaEvent extends MetaEvent { }
+export class SequenceTrackNameMetaEvent extends MetaEvent { }
+export class InstrumentNameMetaEvent extends MetaEvent { }
+export class LyricMetaEvent extends MetaEvent { }
+export class MarkerMetaEvent extends MetaEvent { }
+export class CuePointMetaEvent extends MetaEvent { }
 
 export class TempoMetaEvent extends MetaEvent {
 	get rawTempo() {

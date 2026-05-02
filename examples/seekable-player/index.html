@@ -16,11 +16,22 @@
             <input id="fileButton" type="file" accept=".mid,.midi,audio/midi" />
             <p class="hint">下のキーボードへドラッグ &amp; ドロップでも読み込めます。</p>
             <dl class="meta">
+                <dt>Title</dt><dd id="metaTitle">-</dd>
+                <dt>Copyright</dt><dd id="metaCopyright">-</dd>
                 <dt>Format</dt><dd id="metaFormat">-</dd>
                 <dt>Tracks</dt><dd id="metaTracks">-</dd>
                 <dt>Resolution (TPQN)</dt><dd id="metaResolution">-</dd>
                 <dt>Duration</dt><dd id="metaDuration">-</dd>
             </dl>
+            <details id="metaExtraDetails" hidden>
+                <summary>Track / Marker / Text</summary>
+                <dl class="meta">
+                    <dt>Track names</dt><dd id="metaTrackNames">-</dd>
+                    <dt>Instrument names</dt><dd id="metaInstrumentNames">-</dd>
+                    <dt>Markers</dt><dd id="metaMarkers">-</dd>
+                    <dt>Text</dt><dd id="metaText">-</dd>
+                </dl>
+            </details>
         </section>
 
         <section class="partition">
