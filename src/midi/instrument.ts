@@ -233,6 +233,24 @@ export class Instrument<T> {
     get reverbSend(): GainNode { return this._reverbSend; }
     get chorusSend(): GainNode { return this._chorusSend; }
 
+    // Reset all controllers to GM defaults AND ramp the corresponding
+    // audio params back to those defaults. This is the form that matches
+    // the audible behavior of CC 121 (Reset All Controllers) and GS / XG
+    // Reset SysEx — `resetAllControl()` alone only updates the state
+    // fields, leaving previously-set audio params unchanged.
+    applyReset(time: number) {
+        this.resetAllControl();
+        this._updateDetuneOffset(time);
+        this.setVolume(this.volume, time);
+        this.setExpression(this.expression, time);
+        this.setPanpot(this.panpot, time);
+        this.setModulation(this.modulationValue, time);
+        this.setFilterCutoff(this.filterCutoff, time);
+        this.setFilterResonance(this.filterResonance, time);
+        this.setReverbSend(this.reverbSendValue, time);
+        this.setChorusSend(this.chorusSendValue, time);
+    }
+
     resetAllControl() {
         this.volume = 100;
         this.panpot = 64;
@@ -480,13 +498,7 @@ export class Instrument<T> {
                     this._sustainedNoteOffs.clear();
                     break;
                 case 121: // ResetAllControl
-                    this.resetAllControl();
-                    this._updateDetuneOffset(time);
-                    this.setModulation(this.modulationValue, time);
-                    this.setFilterCutoff(this.filterCutoff, time);
-                    this.setFilterResonance(this.filterResonance, time);
-                    this.setReverbSend(this.reverbSendValue, time);
-                    this.setChorusSend(this.chorusSendValue, time);
+                    this.applyReset(time);
                     break;
                 default:
                     if (this.patch) {

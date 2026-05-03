@@ -13,6 +13,42 @@ export const isDrumChannel = (channel: number, bankMSB: number) => {
 	return channel === 9;
 };
 
+// GS Reset (Roland SC-55 / SC-88 family).
+//   F0 41 10 42 12 40 00 7F 00 41 F7
+// Bytes after the 0xF0 status: manufacturer 0x41 (Roland), device 0x10,
+// model 0x42 (GS), command 0x12 (DT1 / data set), address 0x40 0x00 0x7F,
+// data 0x00, checksum 0x41, end-of-exclusive 0xF7.
+const GS_RESET = [0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41, 0xF7] as const;
+// XG System On (Yamaha MU series).
+//   F0 43 10 4C 00 00 7E 00 F7
+// Manufacturer 0x43 (Yamaha), device 0x10, model 0x4C (XG), address
+// 0x00 0x00 0x7E, data 0x00, end-of-exclusive 0xF7.
+const XG_RESET = [0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00, 0xF7] as const;
+
+// SystemExclusiveEvent.dataView contents differ by source:
+//   - SMF parser:    [varlen-length, ...body...]   (status 0xF0 already consumed)
+//   - Web MIDI:      [...body...]                  (event.data.slice(1) effectively)
+// Both reset patterns are < 128 bytes so the SMF varlen prefix is exactly
+// one byte. We try matching at offset 0 (Web MIDI) and offset 1 (SMF) and
+// accept whichever lines up.
+export const matchSysEx = (dataView: DataView, pattern: readonly number[]): boolean => {
+	for (const offset of [0, 1]) {
+		if (dataView.byteLength - offset < pattern.length) continue;
+		let match = true;
+		for (let i = 0; i < pattern.length; ++i) {
+			if (dataView.getUint8(offset + i) !== pattern[i]) {
+				match = false;
+				break;
+			}
+		}
+		if (match) return true;
+	}
+	return false;
+};
+
+export const isGsReset = (event: midi.SystemExclusiveEvent) => matchSysEx(event.dataView, GS_RESET);
+export const isXgReset = (event: midi.SystemExclusiveEvent) => matchSysEx(event.dataView, XG_RESET);
+
 // Synthesize a `duration`-second exponentially-decaying stereo noise IR.
 // `decay` shapes the tail (higher = faster fall-off; 2 = roughly natural
 // hall, 4 = small room). Cheap to generate (one allocation, one pass) and
@@ -156,6 +192,19 @@ export class SynthEngine {
 	receiveEvent(event: midi.Event, time: number) {
 		if (event instanceof midi.ChannelEvent) {
 			this.instruments[event.channel].receiveEvent(event, time);
+		} else if (event instanceof midi.SystemExclusiveEvent) {
+			// GS Reset / XG System On both reset every part to GM defaults.
+			// Detect at the engine level (not per-Instrument) so the 16-way
+			// SysEx broadcast doesn't trigger 16 independent resets.
+			if (isGsReset(event) || isXgReset(event)) {
+				for (const instrument of this.instruments) {
+					instrument.applyReset(time);
+				}
+				return;
+			}
+			for (const instrument of this.instruments) {
+				instrument.receiveEvent(event, time);
+			}
 		} else {
 			for (const instrument of this.instruments) {
 				instrument.receiveEvent(event, time);

@@ -133,3 +133,34 @@ describe("Instrument sustain pedal (CC 64)", () => {
         expect(offs).toHaveLength(0);
     });
 });
+
+describe("Instrument.applyReset", () => {
+    it("resets all controller state to GM defaults", () => {
+        const { inst } = makeInstrument();
+        inst.receiveEvent(cc(0, 7, 50), 0);   // Volume
+        inst.receiveEvent(cc(0, 11, 80), 0);  // Expression
+        inst.receiveEvent(cc(0, 10, 100), 0); // Panpot
+        inst.receiveEvent(cc(0, 1, 64), 0);   // Modulation
+        inst.receiveEvent(cc(0, 64, 127), 0); // Sustain
+        inst.receiveEvent(cc(0, 91, 80), 0);  // Reverb send
+        inst.receiveEvent(cc(0, 93, 80), 0);  // Chorus send
+        expect(inst.volume).toBe(50);
+        expect(inst.expression).toBe(80);
+        expect(inst.modulationValue).toBe(64);
+        expect(inst.sustain).toBe(true);
+
+        inst.applyReset(1);
+
+        expect(inst.volume).toBe(100);
+        expect(inst.panpot).toBe(64);
+        expect(inst.expression).toBe(127);
+        expect(inst.modulationValue).toBe(0);
+        expect(inst.filterCutoff).toBe(64);
+        expect(inst.filterResonance).toBe(64);
+        expect(inst.reverbSendValue).toBe(0);
+        expect(inst.chorusSendValue).toBe(0);
+        expect(inst.sustain).toBe(false);
+        expect(inst.bankMSB).toBe(0);
+        expect(inst.bankLSB).toBe(0);
+    });
+});
