@@ -108,6 +108,12 @@ export class Instrument<T> {
     source: AudioNode;
     _panner: StereoPannerNode;
     _gain: GainNode;
+    // Channel-wide detune bus. Emits the current total detune offset (in
+    // cents, = pitchBend + fineTune + coarseTune * 100) as a DC value;
+    // each note's oscillator / filter `.detune` AudioParam connects in,
+    // so writes to `_detuneOffset.offset` propagate to every in-flight
+    // note instantly without iterating the NotePool.
+    private _detuneOffset: ConstantSourceNode;
 
     // Initialized via resetAllControl() called from the constructor.
     volume!: number;        //  7
@@ -149,8 +155,19 @@ export class Instrument<T> {
         this._panner.connect(this._gain);
         this._gain.connect(destination);
 
+        // ConstantSourceNode emits a DC `offset` value to whatever it's
+        // connected to. We connect `offset` to each note's detunable param
+        // (oscillator.detune / filter.detune) on NoteOn; updating
+        // `_detuneOffset.offset` then changes pitch on all in-flight notes.
+        // Output is param-only; no audio path to the speakers.
+        this._detuneOffset = this.audioContext.createConstantSource();
+        this._detuneOffset.offset.value = 0;
+        this._detuneOffset.start();
+
         this.resetAllControl();
     }
+
+    get detuneOffset(): ConstantSourceNode { return this._detuneOffset; }
 
     resetAllControl() {
         this.volume = 100;
@@ -179,6 +196,8 @@ export class Instrument<T> {
         this._sustainedNoteOffs.clear();
         this._expiredEmitter.offAll();
         this._programChangeEmitter.offAll();
+        try { this._detuneOffset.stop(); } catch { /* already stopped */ }
+        this._detuneOffset.disconnect();
     }
 
     pause() {
@@ -211,6 +230,18 @@ export class Instrument<T> {
         param.cancelScheduledValues(time);
         param.setValueAtTime(param.value, time);
         param.linearRampToValueAtTime(target, time + SMOOTHING_TIME);
+    }
+
+    // Push the current total detune (in cents) onto `_detuneOffset.offset`
+    // with the same anti-zipper ramp used for volume / panpot. All notes
+    // whose detunable params connect from `_detuneOffset` track this in
+    // real time — pitch bend and RPN tuning changes no longer need to
+    // walk the NotePool.
+    private _updateDetuneOffset(time: number) {
+        const param = this._detuneOffset.offset;
+        param.cancelScheduledValues(time);
+        param.setValueAtTime(param.value, time);
+        param.linearRampToValueAtTime(this.detune, time + SMOOTHING_TIME);
     }
 
     // Total pitch offset in cents = pitchBend + fineTune + coarseTune × 100.
@@ -318,6 +349,7 @@ export class Instrument<T> {
                     break;
                 case 121: // ResetAllControl
                     this.resetAllControl();
+                    this._updateDetuneOffset(time);
                     break;
                 default:
                     if (this.patch) {
@@ -327,6 +359,9 @@ export class Instrument<T> {
             }
         } else if (event instanceof midi.ProgramChangeEvent) {
             this._programChangeEmitter.emit(event);
+        } else if (event instanceof midi.PitchBendEvent) {
+            this.pitchBend = event.value;
+            this._updateDetuneOffset(time);
         } else if (event instanceof midi.NoteOnEvent) {
             // Re-pressing a note while sustain holds it cancels the
             // pending NoteOff — the new attack supersedes the release.
@@ -374,16 +409,19 @@ export class Instrument<T> {
         }
     }
 
-    receiveRPN(rpn: number, data: number, _time: number) {
+    receiveRPN(rpn: number, data: number, time: number) {
         switch (rpn) {
             case 0: // pitch bend range: MSB = semitones, LSB = cents
                 this.pitchBendRange = ((data >> 7) & 0x7F) + ((data & 0x7F) / 100);
+                this._updateDetuneOffset(time);
                 break;
             case 1: // channel fine tuning: 14-bit, center 0x2000, ±100 cents
                 this.fineTune = (data - 0x2000) / 0x2000 * 100;
+                this._updateDetuneOffset(time);
                 break;
             case 2: // channel coarse tuning: MSB only, center 0x40, ±64 semitones
                 this.coarseTune = ((data >> 7) & 0x7F) - 0x40;
+                this._updateDetuneOffset(time);
                 break;
             default:
                 break;

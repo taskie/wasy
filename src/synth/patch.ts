@@ -77,7 +77,39 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
 		gainParam.linearRampToValueAtTime(0, time + this.releaseTime);
 	}
 
+	// Wire the channel-wide detune offset (current pitch bend + fine + coarse
+	// tune in cents) into each detunable node's `.detune` AudioParam, then
+	// disconnect again when the source ends. Subclasses call this from
+	// onNoteOn after populating `monophony.detunableNodes`. Updates to
+	// `Instrument._detuneOffset.offset` flow through this connection so all
+	// in-flight notes track pitch bend / RPN tuning changes — replacing the
+	// old per-note `setValueAtTime` snapshot at NoteOn time.
+	protected attachChannelDetune(monophony: T, source: AudioScheduledSourceNode) {
+		const detuneOffset = this.instrument.detuneOffset;
+		const params: AudioParam[] = [];
+		for (const node of monophony.detunableNodes) {
+			const param = (node as { detune?: AudioParam }).detune;
+			if (param != null) {
+				detuneOffset.connect(param);
+				params.push(param);
+			}
+		}
+		if (params.length === 0) return;
+		source.addEventListener("ended", () => {
+			for (const param of params) {
+				try {
+					detuneOffset.disconnect(param);
+				} catch {
+					// already disconnected (e.g., Instrument.destroy ran)
+				}
+			}
+		});
+	}
+
 	receiveEvent(event: midi.Event, time: number) {
+		// PitchBend is intercepted by Instrument and applied to the
+		// channel-wide ConstantSourceNode (`_detuneOffset`); it never
+		// reaches the patch.
 		if (event instanceof midi.NoteOnEvent) {
 			const monophony = this.onNoteOn(event, time);
 			if (monophony.parentPatch == null) { monophony.parentPatch = this; }
@@ -86,13 +118,6 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
 			const monophony = this.instrument.findNote(event.noteNumber);
 			if (monophony != null) {
 				this.onNoteOff(monophony as T, time);
-			}
-		} else if (event instanceof midi.PitchBendEvent) {
-			for (const key in this.instrument.noteStore) {
-				const monophony = this.instrument.noteStore[key];
-				if (monophony != null && monophony.parentPatch === this) {
-					this.onPitchBend(event, monophony as T, time);
-				}
 			}
 		}
 	}
@@ -109,15 +134,5 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
 				node.disconnect();
 			}
 		}, 1000);
-	}
-
-	onPitchBend(event: midi.PitchBendEvent, monophony: T, time: number) {
-		if (monophony.detunableNodes == null) return;
-		this.instrument.pitchBend = event.value;
-		const detune = this.detune;
-		for (const node of monophony.detunableNodes) {
-			const oscillator = node as OscillatorNode;
-			oscillator.detune.setValueAtTime(detune, time);
-		}
 	}
 }

@@ -21,6 +21,7 @@ const fakeAudioContext = (): AudioContext => ({
     currentTime: 0,
     createStereoPanner: () => fakeNode({ pan: fakeParam() }),
     createGain: () => fakeNode({ gain: fakeParam() }),
+    createConstantSource: () => fakeNode({ offset: fakeParam(), start() {}, stop() {} }),
 }) as unknown as AudioContext;
 
 const dv = (...bytes: number[]) => new DataView(Uint8Array.from(bytes).buffer);

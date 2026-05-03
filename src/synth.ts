@@ -39,13 +39,17 @@ export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
 		// settings
 		oscillator.type = this.oscillatorType;
 		oscillator.frequency.value = this.tuning.frequency(event.noteNumber);
-		oscillator.detune.value = this.detune;
+		// Detune is driven by the channel-wide ConstantSourceNode; the
+		// oscillator's own detune base stays at 0 and the connection sums
+		// in pitch bend / fine / coarse tune as a single AudioParam input.
+		oscillator.detune.value = 0;
 		// Gain starts at 0; applyAttack schedules the AD(S) envelope at `time`.
 		gain.gain.value = 0;
 
 		// connect
 		oscillator.connect(gain);
 		gain.connect(this.destination);
+		this.attachChannelDetune(monophony, oscillator);
 
 		// start
 		this.applyAttack(gain.gain, velocityToGain(event.velocity), time);
@@ -108,7 +112,9 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 		source.loop = true;
 		filter.type = "bandpass";
 		filter.frequency.value = this.tuning.frequency(event.noteNumber + 24);
-		filter.detune.value = this.detune;
+		// Detune is driven by the channel-wide ConstantSourceNode (see
+		// attachChannelDetune); filter.detune base stays at 0.
+		filter.detune.value = 0;
 		filter.Q.value = 1;
 		// Gain starts at 0; applyAttack schedules the AD(S) envelope at `time`.
 		gain.gain.value = 0;
@@ -117,6 +123,7 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 		source.connect(filter);
 		filter.connect(gain);
 		gain.connect(this.destination);
+		this.attachChannelDetune(monophony, source);
 
 		// start
 		this.applyAttack(gain.gain, velocityToGain(event.velocity), time);
