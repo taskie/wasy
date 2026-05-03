@@ -1,6 +1,7 @@
 import {
     SmfPlayer,
     SynthEngine,
+    smfAnalyze,
     type SongInfo,
     type TimedEvent,
 } from "wasy";
@@ -34,6 +35,8 @@ class Application {
 
     private seekBar!: HTMLInputElement;
     private seekReadout!: HTMLOutputElement;
+    private seekTimeReadout!: HTMLOutputElement;
+    private seekBarBeatReadout!: HTMLOutputElement;
     private playButton!: HTMLButtonElement;
     private pauseButton!: HTMLButtonElement;
     private stopButton!: HTMLButtonElement;
@@ -62,6 +65,8 @@ class Application {
         // Audio is deferred — see ensureAudio(). Only DOM/views are wired here.
         this.seekBar = q<HTMLInputElement>("#seekBar");
         this.seekReadout = q<HTMLOutputElement>("#seekReadout");
+        this.seekTimeReadout = q<HTMLOutputElement>("#seekTimeReadout");
+        this.seekBarBeatReadout = q<HTMLOutputElement>("#seekBarBeatReadout");
         this.playButton = q<HTMLButtonElement>("#playButton");
         this.pauseButton = q<HTMLButtonElement>("#pauseButton");
         this.stopButton = q<HTMLButtonElement>("#stopButton");
@@ -224,6 +229,7 @@ class Application {
         this.songInfo = songInfo;
         this.refreshMeta();
         this.pianoRollView.setNotes(songInfo.notes, songInfo.resolution);
+        this.pianoRollView.setTimeSignatureMap(songInfo.timeSignatureMap);
         this.keyboardView.clear();
         this.eventLogView.clear();
 
@@ -237,7 +243,12 @@ class Application {
         this.metaFormat.textContent = String(this.songInfo.format);
         this.metaTracks.textContent = String(this.songInfo.numberOfTracks);
         this.metaResolution.textContent = String(this.songInfo.resolution);
-        this.metaDuration.textContent = `${this.songInfo.durationTicks} tick`;
+        const totalSeconds = smfAnalyze.tickToSeconds(
+            this.songInfo.durationTicks,
+            this.songInfo.tempoMap,
+            this.songInfo.resolution,
+        );
+        this.metaDuration.textContent = `${smfAnalyze.formatTime(totalSeconds)} (${this.songInfo.durationTicks} tick)`;
         this.seekBar.max = String(this.songInfo.durationTicks);
         this.seekBar.value = "0";
         this.seekBar.disabled = false;
@@ -327,8 +338,27 @@ class Application {
     }
 
     private updateReadout(tick: number) {
-        const total = this.songInfo?.durationTicks ?? 0;
+        const info = this.songInfo;
+        const total = info?.durationTicks ?? 0;
         this.seekReadout.value = `${tick} / ${total} tick`;
+        if (info != null) {
+            const seconds = smfAnalyze.tickToSeconds(tick, info.tempoMap, info.resolution);
+            const totalSeconds = smfAnalyze.tickToSeconds(
+                total,
+                info.tempoMap,
+                info.resolution,
+            );
+            this.seekTimeReadout.value = `${smfAnalyze.formatTime(seconds)} / ${smfAnalyze.formatTime(totalSeconds)}`;
+            const { bar, beat } = smfAnalyze.tickToBarBeat(
+                tick,
+                info.timeSignatureMap,
+                info.resolution,
+            );
+            this.seekBarBeatReadout.value = `${bar}:${beat}`;
+        } else {
+            this.seekTimeReadout.value = "00:00 / 00:00";
+            this.seekBarBeatReadout.value = "1:1";
+        }
     }
 
     private refreshButtons() {

@@ -1,4 +1,4 @@
-import type { Note } from "wasy";
+import type { Note, TimeSignatureChange } from "wasy";
 import { BLACK_KEY, SOLARIZED, channelColor } from "./palette.js";
 
 export class PianoRollView {
@@ -10,6 +10,7 @@ export class PianoRollView {
 
     private notes: Note[] = [];
     private resolution = 480;
+    private timeSignatureMap: TimeSignatureChange[] = [];
     private currentTick = 0;
     private lowPitch = PianoRollView.DEFAULT_LOW;
     private highPitch = PianoRollView.DEFAULT_HIGH;
@@ -42,12 +43,17 @@ export class PianoRollView {
         }
     }
 
+    setTimeSignatureMap(map: TimeSignatureChange[]) {
+        this.timeSignatureMap = map;
+    }
+
     setCurrentTick(tick: number) {
         this.currentTick = tick;
     }
 
     clear() {
         this.notes = [];
+        this.timeSignatureMap = [];
         this.currentTick = 0;
     }
 
@@ -103,22 +109,50 @@ export class PianoRollView {
 
     private drawGrid() {
         const ctx = this.ctx;
-        const beat = this.resolution;
         const visStart = this.currentTick - PianoRollView.NOW_RATIO * this.visibleTicks;
         const visEnd = visStart + this.visibleTicks;
-        const firstBeat = Math.ceil(visStart / beat);
-        const lastBeat = Math.floor(visEnd / beat);
         ctx.strokeStyle = SOLARIZED.base01;
         ctx.lineWidth = 1;
-        for (let b = firstBeat; b <= lastBeat; ++b) {
-            const x = this.tickToX(b * beat);
-            // Every 4th beat is the strong (measure) line; the others are dimmed.
-            ctx.globalAlpha = b % 4 === 0 ? 1 : 0.35;
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, this.height);
-            ctx.stroke();
+        // Walk the time-signature map as a sequence of [start, end) segments.
+        // Each segment carries its own (numerator, denominator), which sets
+        // ticksPerBeat = resolution * 4 / denominator and ticksPerBar
+        // = ticksPerBeat * numerator. Beat lines start from the segment's
+        // own startTick (a TS change always begins a fresh bar at its tick),
+        // so the index `i` in `i % numerator === 0` marks bar lines locally.
+        // Default segment (no TS events) is 4/4 from tick 0 onward.
+        const drawSegment = (
+            segStart: number,
+            segEnd: number,
+            numerator: number,
+            denominator: number,
+        ) => {
+            const ticksPerBeat = (this.resolution * 4) / denominator;
+            const localStart = Math.max(visStart, segStart) - segStart;
+            const localEnd = Math.min(visEnd, segEnd) - segStart;
+            if (localStart >= localEnd) return;
+            const firstBeat = Math.ceil(localStart / ticksPerBeat);
+            const lastBeat = Math.floor(localEnd / ticksPerBeat);
+            for (let i = firstBeat; i <= lastBeat; ++i) {
+                const x = this.tickToX(segStart + i * ticksPerBeat);
+                ctx.globalAlpha = i % numerator === 0 ? 1 : 0.35;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, this.height);
+                ctx.stroke();
+            }
+        };
+        let cursor = 0;
+        let numerator = 4;
+        let denominator = 4;
+        for (const change of this.timeSignatureMap) {
+            if (change.tick > cursor) {
+                drawSegment(cursor, change.tick, numerator, denominator);
+            }
+            cursor = change.tick;
+            numerator = change.numerator;
+            denominator = change.denominator;
         }
+        drawSegment(cursor, Number.POSITIVE_INFINITY, numerator, denominator);
         ctx.globalAlpha = 0.35;
         // C-line accents (octave separators).
         for (let p = this.lowPitch; p <= this.highPitch; ++p) {

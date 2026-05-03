@@ -85,6 +85,7 @@ export class MetaEvent extends FxEvent {
 				0x06: MarkerMetaEvent,
 				0x07: CuePointMetaEvent,
 				0x51: TempoMetaEvent,
+				0x58: TimeSignatureMetaEvent,
 			};
 		}
 		const typeIndex = dataView.getUint8(0);
@@ -139,5 +140,23 @@ export class TempoMetaEvent extends MetaEvent {
 	}
 	get beatsPerMinute() {
 		return 60 / this.secondsPerBeat;
+	}
+}
+
+// FF 58 04 nn dd cc bb. `dd` is a power-of-2 exponent (2 = quarter, 3 = eighth);
+// `denominator` exposes the actual note value (4, 8, 16, ...) so consumers
+// don't have to remember the exponent encoding.
+export class TimeSignatureMetaEvent extends MetaEvent {
+	get numerator() {
+		return this.data.getUint8(0);
+	}
+	get denominator() {
+		return 1 << this.data.getUint8(1);
+	}
+	get clocksPerClick() {
+		return this.data.getUint8(2);
+	}
+	get thirtySecondNotesPerQuarter() {
+		return this.data.getUint8(3);
 	}
 }

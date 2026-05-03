@@ -16,4 +16,10 @@ export { Wasy } from "./wasy.js";
 export type { TimedEvent } from "./wasy.js";
 export { SmfPlayer } from "./smf-player.js";
 export { SynthEngine, isDrumChannel } from "./synth-engine.js";
-export type { Note, SongMetadata, SongInfo } from "./smf-analyze.js";
+export type {
+    Note,
+    SongMetadata,
+    SongInfo,
+    TempoChange,
+    TimeSignatureChange,
+} from "./smf-analyze.js";
