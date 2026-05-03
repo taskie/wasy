@@ -1,5 +1,6 @@
 import * as midi from "./midi/event.js";
 import * as timer from "./player/timer.js";
+import type { SongInfo } from "./smf-analyze.js";
 import { createSignal, type Signal } from "./signal.js";
 
 export interface TimedEvent {
@@ -12,8 +13,14 @@ export class SmfPlayer {
 	playerWorker?: Worker;
 	paused: boolean;
 	private _emitter: Signal<TimedEvent>;
+	// Bundled analysis (header + duration + paired notes + text metadata)
+	// computed by the worker once during SMF parse and posted back via the
+	// `songInfo` message. Available synchronously after `await load()`.
+	// Lets UI consumers (piano-roll, metadata pane, mixer) skip the
+	// duplicate `smf.parseSong()` on the main thread.
+	private _songInfo: SongInfo | null = null;
 	// Resolves when the worker has finished parsing the SMF and replied to
-	// `resolution`. `read` postings are gated on this so the queue does not
+	// `songInfo`. `read` postings are gated on this so the queue does not
 	// fill up during worker init and flush back with stale timeStamps —
 	// which manifested as "drums fire immediately" at playback start.
 	private _readyPromise: Promise<void> = Promise.resolve();
@@ -32,6 +39,10 @@ export class SmfPlayer {
 
 	get ready(): Promise<void> {
 		return this._readyPromise;
+	}
+
+	get songInfo(): SongInfo | null {
+		return this._songInfo;
 	}
 
 	play() {
@@ -81,6 +92,7 @@ export class SmfPlayer {
 		}
 		this.paused = false;
 		this._workerReady = false;
+		this._songInfo = null;
 		// Settle any pending ready Promise so awaiters don't hang. Callers
 		// that re-load will get a fresh Promise from the next `load()`.
 		if (this._resolveReady != null) {
@@ -112,17 +124,33 @@ export class SmfPlayer {
 			{ type: "module" },
 		);
 		this._workerReady = false;
+		this._songInfo = null;
 		this._readyPromise = new Promise<void>((resolve) => {
 			this._resolveReady = resolve;
 		});
 		const initMessage = { type: "init", buffer };
 		this.playerWorker.postMessage(initMessage, [initMessage.buffer]);
-		this.playerWorker.postMessage({ type: "resolution" });
 		this.playerWorker.addEventListener("message", this._playerWorkerMessageListener.bind(this));
 	}
 
 	private _playerWorkerMessageListener(event: MessageEvent) {
 		switch (event.data.type) {
+			case "songInfo": {
+				// Worker posts this once after init parses the SMF. Carries
+				// the analysis (notes / metadata / duration) plus the timing
+				// resolution — same value the deprecated `resolution` reply
+				// used to provide. `_workerReady` flips here so `read` is
+				// no longer gated, and the `ready` Promise resolves.
+				const songInfo: SongInfo = event.data.songInfo;
+				this._songInfo = songInfo;
+				this.timer.resolution = songInfo.resolution;
+				this._workerReady = true;
+				if (this._resolveReady != null) {
+					this._resolveReady();
+					this._resolveReady = null;
+				}
+				break;
+			}
 			case "resolution":
 				this.timer.resolution = event.data.resolution;
 				this._workerReady = true;

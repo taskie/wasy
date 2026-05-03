@@ -1,6 +1,5 @@
-import { smf } from "wasy";
+import type { Note } from "wasy";
 import { BLACK_KEY, SOLARIZED, channelColor } from "./palette.js";
-import { collectNotes, type PianoRollNote } from "./notes.js";
 
 export class PianoRollView {
     static readonly KEYBOARD_WIDTH = 36;
@@ -9,7 +8,7 @@ export class PianoRollView {
     static readonly DEFAULT_HIGH = 108;           // C8
     static readonly VISIBLE_QUARTERS = 8;          // ~8 quarters of context
 
-    private notes: PianoRollNote[] = [];
+    private notes: Note[] = [];
     private resolution = 480;
     private currentTick = 0;
     private lowPitch = PianoRollView.DEFAULT_LOW;
@@ -21,9 +20,12 @@ export class PianoRollView {
         private height: number,
     ) {}
 
-    setSong(song: smf.Song) {
-        this.notes = collectNotes(song);
-        this.resolution = song.header.resolution;
+    // `notes` and `resolution` are now sourced from `SmfPlayer.songInfo`
+    // (computed in the player worker) rather than re-parsing the SMF on
+    // the main thread.
+    setNotes(notes: Note[], resolution: number) {
+        this.notes = notes;
+        this.resolution = resolution;
         // Auto-fit pitch range to actual notes used, snapped to octave bounds.
         if (this.notes.length === 0) {
             this.lowPitch = PianoRollView.DEFAULT_LOW;

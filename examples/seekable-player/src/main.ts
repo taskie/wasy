@@ -1,25 +1,15 @@
 import {
     SmfPlayer,
     SynthEngine,
-    smf,
+    type SongInfo,
     type TimedEvent,
 } from "wasy";
 import "./style.css";
-import { computeDurationTicks } from "./notes.js";
-import { extractSongMetadata, type SongMetadata } from "./metadata.js";
 import { PianoRollView } from "./piano-roll-view.js";
 import { KeyboardView } from "./keyboard-view.js";
 import { AnalyserView } from "./analyser-view.js";
 import { MixerView } from "./mixer-view.js";
 import { EventLogView } from "./event-log-view.js";
-
-interface SongMeta {
-    format: number;
-    numberOfTracks: number;
-    resolution: number;
-    durationTicks: number;
-    text: SongMetadata;
-}
 
 const q = <T extends Element>(selector: string): T => {
     const el = document.querySelector<T>(selector);
@@ -40,7 +30,7 @@ class Application {
     private player: SmfPlayer | null = null;
     private analyser: AnalyserNode | null = null;
 
-    private meta: SongMeta | null = null;
+    private songInfo: SongInfo | null = null;
 
     private seekBar!: HTMLInputElement;
     private seekReadout!: HTMLOutputElement;
@@ -214,45 +204,36 @@ class Application {
         const { synth, player } = await this.ensureAudio();
 
         const buffer = await file.arrayBuffer();
-        // Main-thread parse: drives both metadata display and the piano roll
-        // (notes are pre-extracted with absolute ticks). SmfPlayer.load() then
-        // re-parses inside the worker for playback — the two parses are
-        // independent.
-        const song = smf.parseSong(buffer);
-        this.meta = {
-            format: song.header.format,
-            numberOfTracks: song.header.numberOfTracks,
-            resolution: song.header.resolution,
-            durationTicks: computeDurationTicks(song),
-            text: extractSongMetadata(song),
-        };
+        synth.pause();
+        // Await the worker: parse + analyze runs on the worker thread, then
+        // the worker posts SongInfo back. Once load() resolves, both
+        // `player.songInfo` (UI: piano-roll, metadata, duration) and the
+        // playback state (timer.resolution) are populated. Single parse —
+        // no main-thread `smf.parseSong(buffer)` needed.
+        await player.load(buffer);
+        const songInfo = player.songInfo!;
+        this.songInfo = songInfo;
         this.refreshMeta();
-        this.pianoRollView.setSong(song);
+        this.pianoRollView.setNotes(songInfo.notes, songInfo.resolution);
         this.keyboardView.clear();
         this.eventLogView.clear();
 
-        synth.pause();
-        // Await the worker's `resolution` reply before starting the timer.
-        // Otherwise `read` postings queue up during worker SMF parsing and
-        // flush back with a stale `timeStamp.currentTime`, scheduling tick=0
-        // events at a past audio time (Web Audio fires those immediately).
-        await player.load(buffer);
         this.hasBuffer = true;
         player.play();
         this.refreshButtons();
     }
 
     private refreshMeta() {
-        if (this.meta == null) return;
-        this.metaFormat.textContent = String(this.meta.format);
-        this.metaTracks.textContent = String(this.meta.numberOfTracks);
-        this.metaResolution.textContent = String(this.meta.resolution);
-        this.metaDuration.textContent = `${this.meta.durationTicks} tick`;
-        this.seekBar.max = String(this.meta.durationTicks);
+        if (this.songInfo == null) return;
+        this.metaFormat.textContent = String(this.songInfo.format);
+        this.metaTracks.textContent = String(this.songInfo.numberOfTracks);
+        this.metaResolution.textContent = String(this.songInfo.resolution);
+        this.metaDuration.textContent = `${this.songInfo.durationTicks} tick`;
+        this.seekBar.max = String(this.songInfo.durationTicks);
         this.seekBar.value = "0";
         this.seekBar.disabled = false;
 
-        const t = this.meta.text;
+        const t = this.songInfo.metadata;
         this.metaTitle.textContent = t.title ?? "-";
         this.metaCopyright.textContent =
             t.copyright.length > 0 ? t.copyright.join(" / ") : "-";
@@ -337,7 +318,7 @@ class Application {
     }
 
     private updateReadout(tick: number) {
-        const total = this.meta?.durationTicks ?? 0;
+        const total = this.songInfo?.durationTicks ?? 0;
         this.seekReadout.value = `${tick} / ${total} tick`;
     }
 
@@ -354,7 +335,7 @@ class Application {
         const currentTick = this.hasBuffer
             ? Math.min(
                 Math.max(0, this.player!.timer.tick),
-                this.meta?.durationTicks ?? 0,
+                this.songInfo?.durationTicks ?? 0,
             )
             : 0;
         if (this.hasBuffer && !this.isUserSeeking) {
