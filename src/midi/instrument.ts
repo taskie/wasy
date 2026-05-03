@@ -107,13 +107,29 @@ export class Instrument<T> {
 
     source: AudioNode;
     _panner: StereoPannerNode;
+    // Channel-wide lowpass filter. Sits between `_panner` and `_gain` and
+    // is driven by CC 71 (Resonance / Q) and CC 74 (Brightness / cutoff).
+    // Default is effectively bypass (cutoff at 12 kHz, Q=1) — patches
+    // without their own filter can still respond to brightness changes.
+    _filter: BiquadFilterNode;
     _gain: GainNode;
+    // Per-channel send gains for CC 91 (Reverb) and CC 93 (Chorus). Default
+    // to 0 (dry only). SynthEngine taps the channelGain output into these
+    // and routes their output into the engine-level effect buses.
+    _reverbSend: GainNode;
+    _chorusSend: GainNode;
     // Channel-wide detune bus. Emits the current total detune offset (in
     // cents, = pitchBend + fineTune + coarseTune * 100) as a DC value;
     // each note's oscillator / filter `.detune` AudioParam connects in,
     // so writes to `_detuneOffset.offset` propagate to every in-flight
     // note instantly without iterating the NotePool.
     private _detuneOffset: ConstantSourceNode;
+    // Vibrato LFO (CC 1 — Modulation Wheel). 5 Hz sine, depth controlled
+    // by `_modDepth.gain` in cents. Output of `_modDepth` is connected to
+    // each note's detune param alongside `_detuneOffset`, so the channel
+    // detune bus carries DC (pitch bend + tune) + AC (vibrato) summed.
+    private _modLfo: OscillatorNode;
+    private _modDepth: GainNode;
 
     // Initialized via resetAllControl() called from the constructor.
     volume!: number;        //  7
@@ -128,6 +144,19 @@ export class Instrument<T> {
     // Channel-wide tuning (RPN 1 / RPN 2). Values are in cents.
     fineTune!: number;      // RPN 1: ±100 cents  (14-bit, center 0x2000)
     coarseTune!: number;    // RPN 2: ±64 semitones × 100 cents (7-bit MSB, center 0x40)
+
+    // CC 1 — Modulation Wheel. 0 = no vibrato; 127 = ±50 cents at 5 Hz.
+    modulationValue!: number;
+    // CC 74 — Brightness / Filter Cutoff. 0..127, 64 = neutral.
+    // Mapped exponentially around 12 kHz so 0 ≈ 750 Hz, 127 ≈ 16 kHz.
+    filterCutoff!: number;
+    // CC 71 — Filter Resonance. 0..127, 64 = neutral.
+    // Mapped to BiquadFilter Q in [0.5, 12] (logarithmic around 1).
+    filterResonance!: number;
+    // CC 91 — Reverb Send. 0..127, default 0 (dry only).
+    reverbSendValue!: number;
+    // CC 93 — Chorus Send. 0..127, default 0 (dry only).
+    chorusSendValue!: number;
 
     // Sustain pedal (CC 64). While `sustain` is true, incoming NoteOff
     // events are deferred into `_sustainedNoteOffs` and dispatched in a
@@ -150,10 +179,27 @@ export class Instrument<T> {
         this._programChangeEmitter = createSignal<midi.ProgramChangeEvent>();
 
         this._panner = this.audioContext.createStereoPanner();
+        // Lowpass at 12 kHz / Q=1 is a near-bypass for normal program audio
+        // but lets CC 74 (cutoff) / CC 71 (resonance) sweep into audible
+        // range. One filter per channel keeps the cost flat regardless of
+        // polyphony.
+        this._filter = this.audioContext.createBiquadFilter();
+        this._filter.type = "lowpass";
+        this._filter.frequency.value = 12000;
+        this._filter.Q.value = 1;
         this._gain = this.audioContext.createGain();
         this.source = this._panner;
-        this._panner.connect(this._gain);
+        this._panner.connect(this._filter);
+        this._filter.connect(this._gain);
         this._gain.connect(destination);
+
+        // Send taps are only consumers — SynthEngine connects channelGain
+        // into these on construction and routes their output into the
+        // engine-level effect buses. We just expose them and own the gain.
+        this._reverbSend = this.audioContext.createGain();
+        this._reverbSend.gain.value = 0;
+        this._chorusSend = this.audioContext.createGain();
+        this._chorusSend.gain.value = 0;
 
         // ConstantSourceNode emits a DC `offset` value to whatever it's
         // connected to. We connect `offset` to each note's detunable param
@@ -164,10 +210,28 @@ export class Instrument<T> {
         this._detuneOffset.offset.value = 0;
         this._detuneOffset.start();
 
+        // Vibrato LFO: 5 Hz sine → modDepth (cents). Each note's detune
+        // param connects from `_modDepth` alongside `_detuneOffset`, so the
+        // channel detune bus carries DC (pitch bend + tune) + AC (vibrato).
+        this._modLfo = this.audioContext.createOscillator();
+        this._modLfo.type = "sine";
+        this._modLfo.frequency.value = 5;
+        this._modDepth = this.audioContext.createGain();
+        this._modDepth.gain.value = 0;
+        this._modLfo.connect(this._modDepth);
+        this._modLfo.start();
+
         this.resetAllControl();
     }
 
     get detuneOffset(): ConstantSourceNode { return this._detuneOffset; }
+    // Output of the modulation LFO scaled by `_modDepth.gain` (cents).
+    // Patches connect this into each note's detune param on NoteOn.
+    get modulation(): AudioNode { return this._modDepth; }
+    // Wet send taps — SynthEngine routes channelGain into these and their
+    // output into the engine-level Reverb / Chorus inputs.
+    get reverbSend(): GainNode { return this._reverbSend; }
+    get chorusSend(): GainNode { return this._chorusSend; }
 
     resetAllControl() {
         this.volume = 100;
@@ -181,6 +245,12 @@ export class Instrument<T> {
 
         this.fineTune = 0;
         this.coarseTune = 0;
+
+        this.modulationValue = 0;
+        this.filterCutoff = 64;
+        this.filterResonance = 64;
+        this.reverbSendValue = 0;
+        this.chorusSendValue = 0;
 
         this.sustain = false;
         this._sustainedNoteOffs.clear();
@@ -198,6 +268,12 @@ export class Instrument<T> {
         this._programChangeEmitter.offAll();
         try { this._detuneOffset.stop(); } catch { /* already stopped */ }
         this._detuneOffset.disconnect();
+        try { this._modLfo.stop(); } catch { /* already stopped */ }
+        this._modLfo.disconnect();
+        this._modDepth.disconnect();
+        this._filter.disconnect();
+        this._reverbSend.disconnect();
+        this._chorusSend.disconnect();
     }
 
     pause() {
@@ -242,6 +318,47 @@ export class Instrument<T> {
         param.cancelScheduledValues(time);
         param.setValueAtTime(param.value, time);
         param.linearRampToValueAtTime(this.detune, time + SMOOTHING_TIME);
+    }
+
+    private _rampParam(param: AudioParam, target: number, time: number) {
+        param.cancelScheduledValues(time);
+        param.setValueAtTime(param.value, time);
+        param.linearRampToValueAtTime(target, time + SMOOTHING_TIME);
+    }
+
+    setModulation(value: number, time: number) {
+        this.modulationValue = value;
+        // 0..127 → 0..50 cents of vibrato amplitude. ±50 cents at 5 Hz is
+        // the classic "expressive" vibrato range; full-on still leaves the
+        // pitch within a quarter-tone of the nominal note.
+        this._rampParam(this._modDepth.gain, value / 127 * 50, time);
+    }
+
+    setFilterCutoff(value: number, time: number) {
+        this.filterCutoff = value;
+        // 0..127 → 750..16000 Hz (exponential, ~4.4 octaves). 64 maps to
+        // ~5.4 kHz — slightly darker than the 12 kHz default so a CC 74=64
+        // write produces a perceptible reset rather than a no-op.
+        const target = 750 * Math.pow(16000 / 750, value / 127);
+        this._rampParam(this._filter.frequency, target, time);
+    }
+
+    setFilterResonance(value: number, time: number) {
+        this.filterResonance = value;
+        // 0..127 → 0.5..12 (logarithmic, 64 ≈ 1). High Q gets metallic so
+        // we cap the upper end conservatively.
+        const target = 0.5 * Math.pow(24, value / 127);
+        this._rampParam(this._filter.Q, target, time);
+    }
+
+    setReverbSend(value: number, time: number) {
+        this.reverbSendValue = value;
+        this._rampParam(this._reverbSend.gain, value / 127, time);
+    }
+
+    setChorusSend(value: number, time: number) {
+        this.chorusSendValue = value;
+        this._rampParam(this._chorusSend.gain, value / 127, time);
     }
 
     // Total pitch offset in cents = pitchBend + fineTune + coarseTune × 100.
@@ -310,6 +427,21 @@ export class Instrument<T> {
                 case 11:    // Expression
                     this.setExpression(event.value, time);
                     break;
+                case 1:     // Modulation Wheel
+                    this.setModulation(event.value, time);
+                    break;
+                case 71:    // Filter Resonance
+                    this.setFilterResonance(event.value, time);
+                    break;
+                case 74:    // Brightness / Filter Cutoff
+                    this.setFilterCutoff(event.value, time);
+                    break;
+                case 91:    // Reverb Send
+                    this.setReverbSend(event.value, time);
+                    break;
+                case 93:    // Chorus Send
+                    this.setChorusSend(event.value, time);
+                    break;
                 case 64:    // Sustain (Damper) Pedal
                     this.setSustain(event.value, time);
                     break;
@@ -350,6 +482,11 @@ export class Instrument<T> {
                 case 121: // ResetAllControl
                     this.resetAllControl();
                     this._updateDetuneOffset(time);
+                    this.setModulation(this.modulationValue, time);
+                    this.setFilterCutoff(this.filterCutoff, time);
+                    this.setFilterResonance(this.filterResonance, time);
+                    this.setReverbSend(this.reverbSendValue, time);
+                    this.setChorusSend(this.chorusSendValue, time);
                     break;
                 default:
                     if (this.patch) {

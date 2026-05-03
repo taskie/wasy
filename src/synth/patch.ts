@@ -86,11 +86,13 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
 	// old per-note `setValueAtTime` snapshot at NoteOn time.
 	protected attachChannelDetune(monophony: T, source: AudioScheduledSourceNode) {
 		const detuneOffset = this.instrument.detuneOffset;
+		const modulation = this.instrument.modulation;
 		const params: AudioParam[] = [];
 		for (const node of monophony.detunableNodes) {
 			const param = (node as { detune?: AudioParam }).detune;
 			if (param != null) {
 				detuneOffset.connect(param);
+				modulation.connect(param);
 				params.push(param);
 			}
 		}
@@ -101,6 +103,11 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
 					detuneOffset.disconnect(param);
 				} catch {
 					// already disconnected (e.g., Instrument.destroy ran)
+				}
+				try {
+					modulation.disconnect(param);
+				} catch {
+					// already disconnected
 				}
 			}
 		});

@@ -22,6 +22,8 @@ const fakeAudioContext = (): AudioContext => ({
     createStereoPanner: () => fakeNode({ pan: fakeParam() }),
     createGain: () => fakeNode({ gain: fakeParam() }),
     createConstantSource: () => fakeNode({ offset: fakeParam(), start() {}, stop() {} }),
+    createBiquadFilter: () => fakeNode({ frequency: fakeParam(), Q: fakeParam(), type: "lowpass" }),
+    createOscillator: () => fakeNode({ frequency: fakeParam(), type: "sine", start() {}, stop() {} }),
 }) as unknown as AudioContext;
 
 const dv = (...bytes: number[]) => new DataView(Uint8Array.from(bytes).buffer);
