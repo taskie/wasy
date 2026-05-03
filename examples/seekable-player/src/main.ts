@@ -11,6 +11,7 @@ import { PianoRollView } from "./piano-roll-view.js";
 import { KeyboardView } from "./keyboard-view.js";
 import { AnalyserView } from "./analyser-view.js";
 import { MixerView } from "./mixer-view.js";
+import { EventLogView } from "./event-log-view.js";
 
 interface SongMeta {
     format: number;
@@ -63,6 +64,7 @@ class Application {
     private keyboardView!: KeyboardView;
     private analyserView!: AnalyserView;
     private mixerView!: MixerView;
+    private eventLogView!: EventLogView;
     private isUserSeeking = false;
     private hasBuffer = false;
 
@@ -110,6 +112,7 @@ class Application {
         );
 
         this.mixerView = new MixerView(q<HTMLElement>("#mixer"));
+        this.eventLogView = new EventLogView(q<HTMLElement>("#eventLog"));
 
         this.fileButton.addEventListener("change", (e) => this.onFileChange(e));
         this.playButton.addEventListener("click", () => this.onPlay());
@@ -188,6 +191,7 @@ class Application {
         }
         this.synth!.receiveEvent(e.midiEvent, time);
         this.keyboardView.onTimedEvent(e);
+        this.eventLogView.onTimedEvent(e);
     }
 
     private async onFileChange(e: Event) {
@@ -225,6 +229,7 @@ class Application {
         this.refreshMeta();
         this.pianoRollView.setSong(song);
         this.keyboardView.clear();
+        this.eventLogView.clear();
 
         synth.pause();
         // Await the worker's `resolution` reply before starting the timer.
@@ -366,6 +371,7 @@ class Application {
         this.pianoRollView.draw();
         this.keyboardView.draw();
         this.analyserView.draw();
+        this.eventLogView.draw();
         requestAnimationFrame(() => this.tick());
     }
 }
