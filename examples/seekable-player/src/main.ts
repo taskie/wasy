@@ -104,6 +104,15 @@ class Application {
         this.mixerView = new MixerView(q<HTMLElement>("#mixer"));
         this.eventLogView = new EventLogView(q<HTMLElement>("#eventLog"));
 
+        // Construct / resume AudioContext on the click that opens the file
+        // picker — that click is a guaranteed user gesture. The later `change`
+        // event isn't treated as transient activation in Firefox (the gesture
+        // was consumed by the modal picker), so creating the context inside
+        // `onFileChange` triggers Firefox's autoplay-policy warning. By the
+        // time `change` fires, the context is already running.
+        this.fileButton.addEventListener("click", () => {
+            void this.ensureAudio();
+        });
         this.fileButton.addEventListener("change", (e) => this.onFileChange(e));
         this.playButton.addEventListener("click", () => this.onPlay());
         this.pauseButton.addEventListener("click", () => this.onPause());
