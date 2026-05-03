@@ -2,6 +2,16 @@ import * as midi from "./midi/event.js";
 import * as inst from "./midi/instrument.js";
 import { Monophony, Patch } from "./synth/patch.js";
 
+// Squared velocity → gain mapping. The MIDI spec leaves the curve
+// implementation-defined, but DLS Level 1 / GM convention (and most
+// hardware GM modules) use roughly `(v/127)^2`. Linear `v/127` makes
+// soft notes louder than expected and the dynamic range feel
+// compressed; squaring gives a more natural piano-like response.
+const velocityToGain = (velocity: number) => {
+	const x = velocity / 127;
+	return x * x;
+};
+
 export class SimpleOscillatorMonophony extends Monophony {
 	oscillator!: OscillatorNode;
 	gain!: GainNode;
@@ -30,21 +40,24 @@ export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony>
 		oscillator.type = this.oscillatorType;
 		oscillator.frequency.value = this.tuning.frequency(event.noteNumber);
 		oscillator.detune.value = this.detune;
-		gain.gain.value = event.velocity / 127;
+		// Gain starts at 0; applyAttack schedules the AD(S) envelope at `time`.
+		gain.gain.value = 0;
 
 		// connect
 		oscillator.connect(gain);
 		gain.connect(this.destination);
 
 		// start
+		this.applyAttack(gain.gain, velocityToGain(event.velocity), time);
 		oscillator.start(time);
 
 		return monophony;
 	}
 	override onNoteOff(monophony: SimpleOscillatorMonophony, time: number) {
-		monophony.oscillator.stop(time);
-		monophony.gain.gain.cancelScheduledValues(time);
-		monophony.gain.gain.setValueAtTime(0, time);
+		this.applyRelease(monophony.gain.gain, time);
+		// Stop the oscillator after the release tail finishes; cutting
+		// at `time` would defeat the ramp.
+		monophony.oscillator.stop(time + this.releaseTime);
 	}
 	override onExpired(monophony: SimpleOscillatorMonophony, time: number) {
 		this.onNoteOff(monophony, time);
@@ -97,7 +110,8 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 		filter.frequency.value = this.tuning.frequency(event.noteNumber + 24);
 		filter.detune.value = this.detune;
 		filter.Q.value = 1;
-		gain.gain.value = event.velocity / 127;
+		// Gain starts at 0; applyAttack schedules the AD(S) envelope at `time`.
+		gain.gain.value = 0;
 
 		// connect
 		source.connect(filter);
@@ -105,14 +119,14 @@ export class NoisePatch extends Patch<NoiseMonophony> {
 		gain.connect(this.destination);
 
 		// start
+		this.applyAttack(gain.gain, velocityToGain(event.velocity), time);
 		source.start(time);
 
 		return monophony;
 	}
 	override onNoteOff(monophony: NoiseMonophony, time: number) {
-		monophony.source.stop(time);
-		monophony.gain.gain.cancelScheduledValues(time);
-		monophony.gain.gain.setValueAtTime(0, time);
+		this.applyRelease(monophony.gain.gain, time);
+		monophony.source.stop(time + this.releaseTime);
 	}
 	override onExpired(monophony: NoiseMonophony, time: number) {
 		this.onNoteOff(monophony, time);
@@ -139,7 +153,11 @@ export class GainedNoisePatch extends NoisePatch {
 		} else {
 			filter.frequency.value = this.tuning.frequency(event.noteNumber + 24);
 		}
-		const baseGain = gain.gain.value;
+		// Recompute baseGain from velocity rather than reading gain.gain.value:
+		// the parent's applyAttack schedules events at audio `time`, so the
+		// param's live `.value` (at currentTime) is still 0 here.
+		const baseGain = velocityToGain(event.velocity);
+		gain.gain.cancelScheduledValues(time);
 		gain.gain.setValueAtTime(this.valueAtBegin * baseGain, time);
 		gain.gain.linearRampToValueAtTime(this.valueAtEnd * baseGain, time + this.duration);
 		return monophony;
@@ -173,7 +191,11 @@ export class GainedOscillatorPatch extends SimpleOscillatorPatch {
 	override onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
 		const monophony = super.onNoteOn(event, time);
 		const gain = monophony.gain;
-		const baseGain = gain.gain.value;
+		// Recompute baseGain from velocity rather than reading gain.gain.value:
+		// the parent's applyAttack schedules events at audio `time`, so the
+		// param's live `.value` (at currentTime) is still 0 here.
+		const baseGain = velocityToGain(event.velocity);
+		gain.gain.cancelScheduledValues(time);
 		gain.gain.setValueAtTime(this.valueAtBegin * baseGain, time);
 		gain.gain.linearRampToValueAtTime(this.valueAtEnd * baseGain, time + this.duration);
 		return monophony;

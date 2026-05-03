@@ -93,6 +93,12 @@ export interface Patch<_T> {
     receiveEvent(event: midi.Event, time: number): void;
 }
 
+// Anti-zipper ramp time for CC 7 / CC 11 / CC 10 (volume / expression /
+// panpot). 8 ms is short enough to feel instantaneous for performance use
+// yet long enough to remove the sample-boundary click that comes from a
+// stepwise `setValueAtTime` write.
+const SMOOTHING_TIME = 0.008;
+
 export class Instrument<T> {
     patch!: Patch<T>;
     notePool: NotePool<T>;
@@ -180,22 +186,31 @@ export class Instrument<T> {
         this._sustainedNoteOffs.clear();
     }
 
-    setPanpot(panpot: number) {
+    setPanpot(panpot: number, time: number) {
         this.panpot = panpot;
         // MIDI panpot 0-127 → StereoPanner pan -1..+1 (centered at 64).
-        this._panner.pan.value = (panpot - 64) / 64;
+        const target = (panpot - 64) / 64;
+        const param = this._panner.pan;
+        param.cancelScheduledValues(time);
+        param.setValueAtTime(param.value, time);
+        param.linearRampToValueAtTime(target, time + SMOOTHING_TIME);
     }
 
     setVolume(volume: number, time: number) {
         this.volume = volume;
-        this._gain.gain.cancelScheduledValues(time);
-        this._gain.gain.setValueAtTime(volume / 127 * this.expression / 127, time);
+        this._rampGain(volume / 127 * this.expression / 127, time);
     }
 
     setExpression(expression: number, time: number) {
         this.expression = expression;
-        this._gain.gain.cancelScheduledValues(time);
-        this._gain.gain.setValueAtTime(this.volume / 127 * expression / 127, time);
+        this._rampGain(this.volume / 127 * expression / 127, time);
+    }
+
+    private _rampGain(target: number, time: number) {
+        const param = this._gain.gain;
+        param.cancelScheduledValues(time);
+        param.setValueAtTime(param.value, time);
+        param.linearRampToValueAtTime(target, time + SMOOTHING_TIME);
     }
 
     // Total pitch offset in cents = pitchBend + fineTune + coarseTune × 100.
@@ -259,7 +274,7 @@ export class Instrument<T> {
                     this.setVolume(event.value, time);
                     break;
                 case 10:    // Panpot
-                    this.setPanpot(event.value);
+                    this.setPanpot(event.value, time);
                     break;
                 case 11:    // Expression
                     this.setExpression(event.value, time);
