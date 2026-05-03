@@ -60,6 +60,13 @@ export class Wasy {
 		this.engine.pause();
 	}
 
+	// See `SynthEngine.prewarm` — fires inaudible NoteOn/NoteOff on every
+	// channel to pay Web Audio cold-start cost before real playback begins.
+	// Typical use: `await wasy.ready; wasy.prewarm(); wasy.play()`.
+	prewarm(time?: number) {
+		this.engine.prewarm(time);
+	}
+
 	destroy() {
 		this.player.destroy();
 		this.engine.destroy();

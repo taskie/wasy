@@ -150,6 +150,11 @@ class Application {
             this.player = new SmfPlayer(ctx);
             this.player.onTimedEvent((e) => this.onTimedEvent(e));
             this.mixerView.setSynth(this.synth);
+            // Pay Web Audio graph cold-start now (silently, velocity 1) so the
+            // first real attack at song start doesn't allocate nodes inside
+            // the audio thread — that hitch was previously most audible on
+            // tick-0 drum hits at the top of playback.
+            this.synth.prewarm();
         }
         if (this.audioContext.state === "suspended") {
             // Awaited so that audioContext.currentTime is actually advancing
