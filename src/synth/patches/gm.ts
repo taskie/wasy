@@ -1,11 +1,16 @@
 import type { ToneDefinition } from "../types.js";
 
 // Chiptune-flavored GM 128 melodic patches. The oscillator palette
-// (sine / square / triangle / sawtooth / noise) and ADSR shapes are tuned
-// by ear toward an NES / Game Boy aesthetic rather than literal acoustic
-// emulation. All envelopes are ADSR; sustain=0 with a positive decay
-// produces a percussive pluck, while omitting decay/sustain keeps the
-// `Patch` defaults (decay=0, sustain=1) for held tones.
+// (sine / square / triangle / sawtooth / noise) and envelope shapes
+// are tuned by ear toward an NES / Game Boy aesthetic rather than
+// literal acoustic emulation. All envelopes use the AHDSFR-extended
+// `"adsr"` schema (the tag is kept for backward compat); `sustain=0`
+// with a positive `decay` produces a percussive pluck, while omitting
+// all of `hold` / `decay` / `sustain` / `fade` keeps the `Patch`
+// defaults (hold=0, decay=0, sustain=1, fade=0) for plain held tones.
+// `hold` pins the gain at peak between attack and decay (mallet
+// articulation); `fade` lets a held key gradually diminish toward 0
+// over the given duration so pads / long voices feel less static.
 export const gmPatches: ToneDefinition[] = [
     // 0..7: Piano family — chiptune "piano" reads as a fast pluck.
     {
@@ -57,9 +62,17 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 },
     },
     {
+        // Brief hold at peak before the decay → mallet "ping" articulation.
         name: "Glockenspiel",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.001, decay: 0.6, sustain: 0, release: 0.2 },
+        envelope: {
+            type: "adsr",
+            attack: 0.001,
+            hold: 0.01,
+            decay: 0.6,
+            sustain: 0,
+            release: 0.2,
+        },
     },
     {
         name: "Musical box",
@@ -67,9 +80,18 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.001, decay: 0.4, sustain: 0, release: 0.15 },
     },
     {
+        // Mallet hits the bar, sustains briefly, then resonates out.
         name: "Vibraphone",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.005, decay: 0.8, sustain: 0.1, release: 0.3 },
+        envelope: {
+            type: "adsr",
+            attack: 0.005,
+            hold: 0.02,
+            decay: 0.8,
+            sustain: 0.1,
+            fade: 4.0,
+            release: 0.3,
+        },
     },
     {
         name: "Marimba",
@@ -82,9 +104,17 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.001, decay: 0.15, sustain: 0, release: 0.04 },
     },
     {
+        // Strike the tube, ring at peak briefly, then long decay to silence.
         name: "Tubular Bell",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.001, decay: 1.5, sustain: 0, release: 0.5 },
+        envelope: {
+            type: "adsr",
+            attack: 0.001,
+            hold: 0.03,
+            decay: 1.5,
+            sustain: 0,
+            release: 0.5,
+        },
     },
     {
         name: "Dulcimer",
@@ -243,9 +273,17 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.05, decay: 0.1, sustain: 0.7, release: 0.1 },
     },
     {
+        // Long bow stroke: gentle fade as the stroke runs out of energy.
         name: "Tremolo Strings",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.15, decay: 0.1, sustain: 0.8, release: 0.3 },
+        envelope: {
+            type: "adsr",
+            attack: 0.15,
+            decay: 0.1,
+            sustain: 0.8,
+            fade: 6.0,
+            release: 0.3,
+        },
     },
     {
         name: "Pizzicato Strings",
@@ -286,14 +324,30 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.2, decay: 0.1, sustain: 0.8, release: 0.3 },
     },
     {
+        // Fade lets a sustained chord sound like a breath running out
+        // instead of holding indefinitely at constant level.
         name: "Voice Aahs",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.2, decay: 0.1, sustain: 0.85, release: 0.3 },
+        envelope: {
+            type: "adsr",
+            attack: 0.2,
+            decay: 0.1,
+            sustain: 0.85,
+            fade: 12.0,
+            release: 0.3,
+        },
     },
     {
         name: "Voice Oohs",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.15, decay: 0.1, sustain: 0.85, release: 0.25 },
+        envelope: {
+            type: "adsr",
+            attack: 0.15,
+            decay: 0.1,
+            sustain: 0.85,
+            fade: 12.0,
+            release: 0.25,
+        },
     },
     {
         name: "Synth Voice",
@@ -474,59 +528,63 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.005, release: 0.05 },
     },
 
-    // 88..95: Synth Pad — long attack/release washes.
+    // 88..95: Synth Pad — long attack/release washes. `fade` slowly
+    // dims the held key so the pad evolves rather than droning at a flat
+    // level for the whole note.
     {
         name: "Pad 1 (Fantasia)",
         source: { kind: "oscillator", oscillatorType: "triangle" },
-        envelope: { type: "adsr", attack: 0.5, release: 0.8 },
+        envelope: { type: "adsr", attack: 0.5, fade: 8.0, release: 0.8 },
     },
     {
         name: "Pad 2 (warm)",
         source: { kind: "oscillator", oscillatorType: "triangle" },
-        envelope: { type: "adsr", attack: 0.4, release: 0.7 },
+        envelope: { type: "adsr", attack: 0.4, fade: 10.0, release: 0.7 },
     },
     {
         name: "Pad 3 (polysynth)",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.3, release: 0.6 },
+        envelope: { type: "adsr", attack: 0.3, fade: 8.0, release: 0.6 },
     },
     {
         name: "Pad 4 (choir)",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.5, release: 1.0 },
+        envelope: { type: "adsr", attack: 0.5, fade: 12.0, release: 1.0 },
     },
     {
         name: "Pad 5 (bowed)",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.6, release: 0.8 },
+        envelope: { type: "adsr", attack: 0.6, fade: 10.0, release: 0.8 },
     },
     {
         name: "Pad 6 (metallic)",
         source: { kind: "oscillator", oscillatorType: "square" },
-        envelope: { type: "adsr", attack: 0.4, release: 0.6 },
+        envelope: { type: "adsr", attack: 0.4, fade: 6.0, release: 0.6 },
     },
     {
         name: "Pad 7 (halo)",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.7, release: 1.0 },
+        envelope: { type: "adsr", attack: 0.7, fade: 12.0, release: 1.0 },
     },
     {
+        // Sweep: shorter fade gives the characteristic "dies out" arc.
         name: "Pad 8 (sweep)",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.5, release: 1.2 },
+        envelope: { type: "adsr", attack: 0.5, fade: 5.0, release: 1.2 },
     },
 
     // 96..103: FX — atmospheric textures; FX 1 is a noise-based rain wash, FX 3 is a bell pluck.
     {
-        // Rain literally is filtered noise; tracking filter gives per-key timbre variation.
+        // Rain literally is filtered noise; tracking filter gives per-key
+        // timbre variation, fade lets the shower naturally subside.
         name: "FX 1 (rain)",
         source: { kind: "noise" },
-        envelope: { type: "adsr", attack: 0.3, release: 0.5 },
+        envelope: { type: "adsr", attack: 0.3, fade: 8.0, release: 0.5 },
     },
     {
         name: "FX 2 (soundtrack)",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.4, release: 0.8 },
+        envelope: { type: "adsr", attack: 0.4, fade: 10.0, release: 0.8 },
     },
     {
         name: "FX 3 (crystal)",
@@ -536,12 +594,12 @@ export const gmPatches: ToneDefinition[] = [
     {
         name: "FX 4 (atmosphere)",
         source: { kind: "oscillator", oscillatorType: "triangle" },
-        envelope: { type: "adsr", attack: 0.4, release: 0.8 },
+        envelope: { type: "adsr", attack: 0.4, fade: 12.0, release: 0.8 },
     },
     {
         name: "FX 5 (brightness)",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.3, release: 0.6 },
+        envelope: { type: "adsr", attack: 0.3, fade: 8.0, release: 0.6 },
     },
     {
         name: "FX 6 (goblins)",
@@ -551,12 +609,12 @@ export const gmPatches: ToneDefinition[] = [
     {
         name: "FX 7 (echoes)",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.4, release: 0.8 },
+        envelope: { type: "adsr", attack: 0.4, fade: 10.0, release: 0.8 },
     },
     {
         name: "FX 8 (sci-fi)",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.3, release: 0.6 },
+        envelope: { type: "adsr", attack: 0.3, fade: 8.0, release: 0.6 },
     },
 
     // 104..111: Ethnic — plucks (sitar/banjo/shamisen/koto/kalimba) plus sustained reeds.
@@ -603,9 +661,17 @@ export const gmPatches: ToneDefinition[] = [
 
     // 112..119: Percussive — pitched percussion + reverse cymbal swell on noise.
     {
+        // Brief hold reinforces the bell-strike attack.
         name: "Tinkle Bell",
         source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.001, decay: 0.8, sustain: 0, release: 0.3 },
+        envelope: {
+            type: "adsr",
+            attack: 0.001,
+            hold: 0.015,
+            decay: 0.8,
+            sustain: 0,
+            release: 0.3,
+        },
     },
     {
         // Agogo is metallic Latin percussion; triangle reads brighter than a pure sine ping.
@@ -640,10 +706,11 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.001, decay: 0.25, sustain: 0, release: 0.05 },
     },
     {
-        // Reverse Cymbal: long-attack noise swell (sustains at peak, short release on NoteOff).
+        // Reverse Cymbal: long-attack noise swell. Brief hold at peak so
+        // the swell lands deliberately before NoteOff cuts it.
         name: "Reverse Cymbal",
         source: { kind: "noise" },
-        envelope: { type: "adsr", attack: 1.0, release: 0.05 },
+        envelope: { type: "adsr", attack: 1.0, hold: 0.1, release: 0.05 },
     },
 
     // 120..127: SFX — mostly noise; Bird Tweet and Telephone Ring stay tonal.
@@ -658,9 +725,10 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.05, release: 0.1 },
     },
     {
+        // Tide swells in over half a second, then slowly recedes while held.
         name: "Seashore",
         source: { kind: "noise" },
-        envelope: { type: "adsr", attack: 0.5, release: 0.5 },
+        envelope: { type: "adsr", attack: 0.5, fade: 15.0, release: 0.5 },
     },
     {
         name: "Bird Tweet",
