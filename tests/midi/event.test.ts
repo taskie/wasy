@@ -118,11 +118,7 @@ describe("MetaEvent.create", () => {
 
     it("can decode shift_jis text when explicitly requested", () => {
         // 0x03 typeIndex, 0x04 length VLQ, Shift_JIS "あい" = 82 A0 82 A2
-        const event = Event.create(
-            dv(0x03, 0x04, 0x82, 0xa0, 0x82, 0xa2),
-            0,
-            0xff,
-        ) as MetaEvent;
+        const event = Event.create(dv(0x03, 0x04, 0x82, 0xa0, 0x82, 0xa2), 0, 0xff) as MetaEvent;
         expect(event.text("shift_jis")).toBe("あい");
     });
 

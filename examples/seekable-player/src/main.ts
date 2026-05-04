@@ -1,10 +1,4 @@
-import {
-    SmfPlayer,
-    SynthEngine,
-    smfAnalyze,
-    type SongInfo,
-    type TimedEvent,
-} from "wasy";
+import { SmfPlayer, SynthEngine, smfAnalyze, type SongInfo, type TimedEvent } from "wasy";
 import "./style.css";
 import { PianoRollView } from "./piano-roll-view.js";
 import { KeyboardView } from "./keyboard-view.js";
@@ -255,8 +249,7 @@ class Application {
 
         const t = this.songInfo.metadata;
         this.metaTitle.textContent = t.title ?? "-";
-        this.metaCopyright.textContent =
-            t.copyright.length > 0 ? t.copyright.join(" / ") : "-";
+        this.metaCopyright.textContent = t.copyright.length > 0 ? t.copyright.join(" / ") : "-";
         this.metaTrackNames.textContent =
             t.trackNames.length > 0
                 ? t.trackNames.map((x) => `#${x.trackIndex} ${x.name}`).join(", ")
@@ -266,11 +259,8 @@ class Application {
                 ? t.instrumentNames.map((x) => `#${x.trackIndex} ${x.name}`).join(", ")
                 : "-";
         this.metaMarkers.textContent =
-            t.markers.length > 0
-                ? t.markers.map((x) => `${x.tick}: ${x.text}`).join(", ")
-                : "-";
-        this.metaText.textContent =
-            t.text.length > 0 ? t.text.join(" / ") : "-";
+            t.markers.length > 0 ? t.markers.map((x) => `${x.tick}: ${x.text}`).join(", ") : "-";
+        this.metaText.textContent = t.text.length > 0 ? t.text.join(" / ") : "-";
         const hasExtra =
             t.trackNames.length > 0 ||
             t.instrumentNames.length > 0 ||
@@ -343,11 +333,7 @@ class Application {
         this.seekReadout.value = `${tick} / ${total} tick`;
         if (info != null) {
             const seconds = smfAnalyze.tickToSeconds(tick, info.tempoMap, info.resolution);
-            const totalSeconds = smfAnalyze.tickToSeconds(
-                total,
-                info.tempoMap,
-                info.resolution,
-            );
+            const totalSeconds = smfAnalyze.tickToSeconds(total, info.tempoMap, info.resolution);
             this.seekTimeReadout.value = `${smfAnalyze.formatTime(seconds)} / ${smfAnalyze.formatTime(totalSeconds)}`;
             const { bar, beat } = smfAnalyze.tickToBarBeat(
                 tick,
@@ -372,10 +358,7 @@ class Application {
 
     private tick() {
         const currentTick = this.hasBuffer
-            ? Math.min(
-                Math.max(0, this.player!.timer.tick),
-                this.songInfo?.durationTicks ?? 0,
-            )
+            ? Math.min(Math.max(0, this.player!.timer.tick), this.songInfo?.durationTicks ?? 0)
             : 0;
         if (this.hasBuffer && !this.isUserSeeking) {
             const t = Math.round(currentTick);
@@ -384,9 +367,7 @@ class Application {
         }
         // While the user drags the seek bar, render the slider's tick instead
         // of timer.tick so the roll previews the seek target.
-        const previewTick = this.isUserSeeking
-            ? Number(this.seekBar.value)
-            : currentTick;
+        const previewTick = this.isUserSeeking ? Number(this.seekBar.value) : currentTick;
         this.pianoRollView.setCurrentTick(previewTick);
         this.pianoRollView.draw();
         this.keyboardView.draw();

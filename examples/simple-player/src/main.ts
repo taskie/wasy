@@ -160,7 +160,8 @@ class Application {
                 this.songs = (await res.json()) as Song[];
                 for (const song of this.songs) {
                     const option = document.createElement("option");
-                    option.textContent = song.artist != null ? `${song.name} （${song.artist}）` : song.name;
+                    option.textContent =
+                        song.artist != null ? `${song.name} （${song.artist}）` : song.name;
                     fileSelector.appendChild(option);
                 }
             }
@@ -192,7 +193,8 @@ class Application {
             const result = fileReader.result;
             if (result instanceof ArrayBuffer) {
                 this.userFile = result;
-                const userFileRadio = document.querySelector<HTMLInputElement>("input#userFileRadio")!;
+                const userFileRadio =
+                    document.querySelector<HTMLInputElement>("input#userFileRadio")!;
                 userFileRadio.checked = true;
             }
         };
@@ -208,7 +210,9 @@ class Application {
         this.keyboardView = new KeyboardView(this.canvasContext);
         this.analyserView = new AnalyserView(this.canvasContext);
 
-        const midiSource = document.querySelector<HTMLInputElement>("input[name=midiSource]:checked")!;
+        const midiSource = document.querySelector<HTMLInputElement>(
+            "input[name=midiSource]:checked",
+        )!;
         if (midiSource.value === "userFile") {
             if (this.userFile != null) {
                 this.playWithBuffer(this.userFile);

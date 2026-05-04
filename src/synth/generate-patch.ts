@@ -5,11 +5,11 @@ import { gmDrumKit } from "./patches/gm-drum-kit.js";
 import { gmPatches } from "./patches/gm.js";
 
 export const generatePatch = (
-	instrument: inst.Instrument<Monophony>,
-	program: number,
-	isDrum = false,
+    instrument: inst.Instrument<Monophony>,
+    program: number,
+    isDrum = false,
 ): Patch<Monophony> => {
-	if (isDrum) return compileDrumKit(instrument, gmDrumKit);
-	const def = gmPatches[program] ?? gmPatches[0];
-	return compileTone(instrument, def);
+    if (isDrum) return compileDrumKit(instrument, gmDrumKit);
+    const def = gmPatches[program] ?? gmPatches[0];
+    return compileTone(instrument, def);
 };

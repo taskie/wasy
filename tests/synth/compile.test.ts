@@ -39,8 +39,7 @@ const makeAudioContext = () => {
         sampleRate: 44100,
         createStereoPanner: () => makeNode({ pan: recordingParam() }),
         createGain: () => makeNode({ gain: recordingParam() }),
-        createConstantSource: () =>
-            makeNode({ offset: recordingParam(), start() {}, stop() {} }),
+        createConstantSource: () => makeNode({ offset: recordingParam(), start() {}, stop() {} }),
         createBiquadFilter: () =>
             makeNode({
                 frequency: recordingParam(),
@@ -74,8 +73,7 @@ const makeAudioContext = () => {
     return ctx as unknown as AudioContext;
 };
 
-const makeInstrument = () =>
-    new Instrument<Monophony>(makeAudioContext(), makeNode() as AudioNode);
+const makeInstrument = () => new Instrument<Monophony>(makeAudioContext(), makeNode() as AudioNode);
 
 describe("compileTone", () => {
     it("oscillator + adsr → SimpleOscillatorPatch with attack/release overrides", () => {

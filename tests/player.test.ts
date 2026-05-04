@@ -9,8 +9,14 @@ import {
 } from "../src/midi/event.js";
 
 const trackChunk = (data: number[]) => [
-    0x4d, 0x54, 0x72, 0x6b,
-    0x00, 0x00, 0x00, data.length,
+    0x4d,
+    0x54,
+    0x72,
+    0x6b,
+    0x00,
+    0x00,
+    0x00,
+    data.length,
     ...data,
 ];
 
@@ -19,27 +25,53 @@ const trackChunk = (data: number[]) => [
 // Track 1 (channel events): NoteOn ch=2 at 0, NoteOff ch=2 at 240, EOT at 480.
 const buildSmf = () => {
     const header = [
-        0x4d, 0x54, 0x68, 0x64,
-        0x00, 0x00, 0x00, 0x06,
-        0x00, 0x01,             // format 1
-        0x00, 0x02,             // 2 tracks
-        0x01, 0xe0,             // resolution 480
+        0x4d,
+        0x54,
+        0x68,
+        0x64,
+        0x00,
+        0x00,
+        0x00,
+        0x06,
+        0x00,
+        0x01, // format 1
+        0x00,
+        0x02, // 2 tracks
+        0x01,
+        0xe0, // resolution 480
     ];
     // Tempo = 500000 us per beat = 120 BPM (Tempo Meta payload)
     const tempoTrack = [
-        0x00, 0xff, 0x51, 0x03, 0x07, 0xa1, 0x20, // SetTempo 500000
-        0x83, 0x60, 0xff, 0x2f, 0x00,             // EOT @ tick 480
+        0x00,
+        0xff,
+        0x51,
+        0x03,
+        0x07,
+        0xa1,
+        0x20, // SetTempo 500000
+        0x83,
+        0x60,
+        0xff,
+        0x2f,
+        0x00, // EOT @ tick 480
     ];
     const noteTrack = [
-        0x00, 0x92, 0x3c, 0x40,                   // NoteOn ch=2 note=60 vel=64 @ 0
-        0x81, 0x70, 0x82, 0x3c, 0x00,             // NoteOff ch=2 note=60 vel=0 @ 240
-        0x81, 0x70, 0xff, 0x2f, 0x00,             // EOT @ 480
+        0x00,
+        0x92,
+        0x3c,
+        0x40, // NoteOn ch=2 note=60 vel=64 @ 0
+        0x81,
+        0x70,
+        0x82,
+        0x3c,
+        0x00, // NoteOff ch=2 note=60 vel=0 @ 240
+        0x81,
+        0x70,
+        0xff,
+        0x2f,
+        0x00, // EOT @ 480
     ];
-    return Uint8Array.from([
-        ...header,
-        ...trackChunk(tempoTrack),
-        ...trackChunk(noteTrack),
-    ]).buffer;
+    return Uint8Array.from([...header, ...trackChunk(tempoTrack), ...trackChunk(noteTrack)]).buffer;
 };
 
 describe("createPlayer", () => {

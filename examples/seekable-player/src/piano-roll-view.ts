@@ -3,10 +3,10 @@ import { BLACK_KEY, SOLARIZED, channelColor } from "./palette.js";
 
 export class PianoRollView {
     static readonly KEYBOARD_WIDTH = 36;
-    static readonly NOW_RATIO = 0.25;             // now-line at 25% from left
-    static readonly DEFAULT_LOW = 21;             // A0
-    static readonly DEFAULT_HIGH = 108;           // C8
-    static readonly VISIBLE_QUARTERS = 8;          // ~8 quarters of context
+    static readonly NOW_RATIO = 0.25; // now-line at 25% from left
+    static readonly DEFAULT_LOW = 21; // A0
+    static readonly DEFAULT_HIGH = 108; // C8
+    static readonly VISIBLE_QUARTERS = 8; // ~8 quarters of context
 
     private notes: Note[] = [];
     private resolution = 480;
@@ -187,8 +187,7 @@ export class PianoRollView {
             const right = Math.min(rollR, x2);
             const w = Math.max(2, right - left);
             const y = this.pitchToY(note.noteNumber);
-            const active =
-                note.startTick <= this.currentTick && note.endTick >= this.currentTick;
+            const active = note.startTick <= this.currentTick && note.endTick >= this.currentTick;
             ctx.fillStyle = channelColor(note.channel, active);
             ctx.fillRect(left, y, w, Math.max(1, ph - 1));
             // Outline played-portion vs. unplayed-portion divider for active note.
@@ -236,7 +235,7 @@ export class PianoRollView {
                 if (ph >= 6) {
                     ctx.fillStyle = SOLARIZED.base01;
                     ctx.font = "9px sans-serif";
-                    const octave = (p / 12) - 1;
+                    const octave = p / 12 - 1;
                     ctx.fillText(`C${octave}`, kw * 0.66, y + ph - 1);
                 }
             }

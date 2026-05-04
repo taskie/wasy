@@ -5,14 +5,7 @@ import { channelColor } from "./palette.js";
 // into the buckets a user actually wants to toggle (e.g. all CC together,
 // all Meta together) — finer than the class hierarchy, coarser than the
 // per-event-type level.
-type Category =
-    | "note"
-    | "cc"
-    | "bend"
-    | "program"
-    | "pressure"
-    | "meta"
-    | "sysex";
+type Category = "note" | "cc" | "bend" | "program" | "pressure" | "meta" | "sysex";
 
 const CATEGORY_LABELS: Record<Category, string> = {
     note: "Note",
@@ -72,14 +65,18 @@ const eventToRow = (e: TimedEvent): Row | null => {
     const tick = m.tick;
     if (m instanceof midi.NoteOnEvent) {
         return {
-            tick, channel: m.channel, category: "note",
+            tick,
+            channel: m.channel,
+            category: "note",
             typeLabel: "Note On",
             detail: `${formatNote(m.noteNumber)} (${m.noteNumber}) vel=${m.velocity}`,
         };
     }
     if (m instanceof midi.NoteOffEvent) {
         return {
-            tick, channel: m.channel, category: "note",
+            tick,
+            channel: m.channel,
+            category: "note",
             typeLabel: "Note Off",
             detail: `${formatNote(m.noteNumber)} (${m.noteNumber}) vel=${m.velocity}`,
         };
@@ -87,40 +84,54 @@ const eventToRow = (e: TimedEvent): Row | null => {
     if (m instanceof midi.ControlChangeEvent) {
         const name = CC_NAMES[m.controller];
         return {
-            tick, channel: m.channel, category: "cc",
+            tick,
+            channel: m.channel,
+            category: "cc",
             typeLabel: `CC ${m.controller}`,
             detail: name != null ? `${name} = ${m.value}` : String(m.value),
         };
     }
     if (m instanceof midi.ProgramChangeEvent) {
         return {
-            tick, channel: m.channel, category: "program",
+            tick,
+            channel: m.channel,
+            category: "program",
             typeLabel: "Program",
             detail: String(m.program),
         };
     }
     if (m instanceof midi.PitchBendEvent) {
         return {
-            tick, channel: m.channel, category: "bend",
+            tick,
+            channel: m.channel,
+            category: "bend",
             typeLabel: "Pitch Bend",
             detail: `${m.value > 0 ? "+" : ""}${m.value}`,
         };
     }
     if (m instanceof midi.PolyphonicKeyPressureEvent) {
         return {
-            tick, channel: m.channel, category: "pressure",
-            typeLabel: "Poly Aftertouch", detail: "",
+            tick,
+            channel: m.channel,
+            category: "pressure",
+            typeLabel: "Poly Aftertouch",
+            detail: "",
         };
     }
     if (m instanceof midi.ChannelPressureEvent) {
         return {
-            tick, channel: m.channel, category: "pressure",
-            typeLabel: "Aftertouch", detail: "",
+            tick,
+            channel: m.channel,
+            category: "pressure",
+            typeLabel: "Aftertouch",
+            detail: "",
         };
     }
     if (m instanceof midi.TempoMetaEvent) {
         return {
-            tick, channel: null, category: "meta",
+            tick,
+            channel: null,
+            category: "meta",
             typeLabel: "Tempo",
             detail: `${m.beatsPerMinute.toFixed(2)} BPM`,
         };
@@ -148,14 +159,18 @@ const eventToRow = (e: TimedEvent): Row | null => {
     }
     if (m instanceof midi.MetaEvent) {
         return {
-            tick, channel: null, category: "meta",
+            tick,
+            channel: null,
+            category: "meta",
             typeLabel: `Meta 0x${m.typeIndex.toString(16).padStart(2, "0")}`,
             detail: "",
         };
     }
     if (m instanceof midi.SystemExclusiveEvent) {
         return {
-            tick, channel: null, category: "sysex",
+            tick,
+            channel: null,
+            category: "sysex",
             typeLabel: "SysEx",
             detail: `${m.dataView.byteLength} bytes`,
         };

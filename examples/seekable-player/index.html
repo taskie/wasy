@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
     <head>
         <meta charset="UTF-8" />
@@ -16,20 +16,30 @@
             <input id="fileButton" type="file" accept=".mid,.midi,audio/midi" />
             <p class="hint">下のキーボードへドラッグ &amp; ドロップでも読み込めます。</p>
             <dl class="meta">
-                <dt>Title</dt><dd id="metaTitle">-</dd>
-                <dt>Copyright</dt><dd id="metaCopyright">-</dd>
-                <dt>Format</dt><dd id="metaFormat">-</dd>
-                <dt>Tracks</dt><dd id="metaTracks">-</dd>
-                <dt>Resolution (TPQN)</dt><dd id="metaResolution">-</dd>
-                <dt>Duration</dt><dd id="metaDuration">-</dd>
+                <dt>Title</dt>
+                <dd id="metaTitle">-</dd>
+                <dt>Copyright</dt>
+                <dd id="metaCopyright">-</dd>
+                <dt>Format</dt>
+                <dd id="metaFormat">-</dd>
+                <dt>Tracks</dt>
+                <dd id="metaTracks">-</dd>
+                <dt>Resolution (TPQN)</dt>
+                <dd id="metaResolution">-</dd>
+                <dt>Duration</dt>
+                <dd id="metaDuration">-</dd>
             </dl>
             <details id="metaExtraDetails" hidden>
                 <summary>Track / Marker / Text</summary>
                 <dl class="meta">
-                    <dt>Track names</dt><dd id="metaTrackNames">-</dd>
-                    <dt>Instrument names</dt><dd id="metaInstrumentNames">-</dd>
-                    <dt>Markers</dt><dd id="metaMarkers">-</dd>
-                    <dt>Text</dt><dd id="metaText">-</dd>
+                    <dt>Track names</dt>
+                    <dd id="metaTrackNames">-</dd>
+                    <dt>Instrument names</dt>
+                    <dd id="metaInstrumentNames">-</dd>
+                    <dt>Markers</dt>
+                    <dd id="metaMarkers">-</dd>
+                    <dt>Text</dt>
+                    <dd id="metaText">-</dd>
                 </dl>
             </details>
         </section>
@@ -55,27 +65,35 @@
         <section class="partition">
             <h2>ピアノロール</h2>
             <canvas id="pianoRollCanvas" width="640" height="320"></canvas>
-            <p class="hint">縦軸 = 音高、横軸 = 時間。赤い縦線が現在位置 (now line)。チャネルごとに色分け、ch 10 (drums) はグレー。</p>
+            <p class="hint">
+                縦軸 = 音高、横軸 = 時間。赤い縦線が現在位置 (now line)。チャネルごとに色分け、ch 10
+                (drums) はグレー。
+            </p>
         </section>
 
         <section class="partition">
             <h2>チャネル別ノート (16ch × 128key)</h2>
             <canvas id="keyboardCanvas" width="640" height="192"></canvas>
-            <p class="hint">縦軸 = MIDI チャネル (ch 1〜16)、横軸 = キー番号 (0〜127)。鳴っている音はチャネル色で点灯。</p>
+            <p class="hint">
+                縦軸 = MIDI チャネル (ch 1〜16)、横軸 = キー番号
+                (0〜127)。鳴っている音はチャネル色で点灯。
+            </p>
         </section>
 
         <section class="partition">
             <h2>波形 / スペクトル</h2>
             <canvas id="analyserCanvas" width="640" height="160"></canvas>
-            <p class="hint">合成出力 → AnalyserNode → destination。塗り = 周波数領域、線 = 時間領域。</p>
+            <p class="hint">
+                合成出力 → AnalyserNode → destination。塗り = 周波数領域、線 = 時間領域。
+            </p>
         </section>
 
         <section class="partition">
             <h2>ミキサー</h2>
             <div id="mixer"></div>
             <p class="hint">
-                S = solo (1 つでも有効なら他は黙る)、M = mute。
-                チャネルボリュームは SMF 内 CC 7 / 11 と独立した user-gain 層に書き込みます。
+                S = solo (1 つでも有効なら他は黙る)、M = mute。 チャネルボリュームは SMF 内 CC 7 /
+                11 と独立した user-gain 層に書き込みます。
             </p>
         </section>
 
@@ -84,17 +102,31 @@
             <div id="eventLog"></div>
             <p class="hint">
                 <code>SmfPlayer.onTimedEvent</code> をそのまま流したログ。
-                チェックボックスでカテゴリ表示、pause で受信停止、clear で履歴破棄。最新 200 件のみ保持。
+                チェックボックスでカテゴリ表示、pause で受信停止、clear で履歴破棄。最新 200
+                件のみ保持。
             </p>
         </section>
 
         <section class="partition footnote">
             <h2>このサンプルが示していること</h2>
             <ul>
-                <li><code>smf.parseSong()</code> でメインスレッド側からも SMF を読み、トラック数 / 解像度 / 全長を取得</li>
-                <li><code>SmfPlayer</code> は worker 経由で再生イベントを供給するだけのパーサ。シンセは触らない</li>
-                <li><code>SynthEngine</code> は <code>SmfPlayer.onTimedEvent</code> で受けた MIDI を Web Audio に流すだけ</li>
-                <li>両者の橋渡しはアプリ側 (<code>main.ts</code>) で行う。差し替え可能性 (例: シンセを別実装に置き換え、可視化のみ <code>SmfPlayer</code> を使う) を確保した最小実装</li>
+                <li>
+                    <code>smf.parseSong()</code> でメインスレッド側からも SMF を読み、トラック数 /
+                    解像度 / 全長を取得
+                </li>
+                <li>
+                    <code>SmfPlayer</code> は worker
+                    経由で再生イベントを供給するだけのパーサ。シンセは触らない
+                </li>
+                <li>
+                    <code>SynthEngine</code> は <code>SmfPlayer.onTimedEvent</code> で受けた MIDI を
+                    Web Audio に流すだけ
+                </li>
+                <li>
+                    両者の橋渡しはアプリ側 (<code>main.ts</code>) で行う。差し替え可能性 (例:
+                    シンセを別実装に置き換え、可視化のみ <code>SmfPlayer</code> を使う)
+                    を確保した最小実装
+                </li>
             </ul>
             <p>
                 <a href="https://github.com/taskie/wasy">taskie/wasy (GitHub)</a>

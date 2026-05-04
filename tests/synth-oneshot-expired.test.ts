@@ -51,8 +51,7 @@ const makeAudioContext = () => {
         sampleRate: 44100,
         createStereoPanner: () => makeNode({ pan: recordingParam() }),
         createGain: () => makeNode({ gain: recordingParam() }),
-        createConstantSource: () =>
-            makeNode({ offset: recordingParam(), start() {}, stop() {} }),
+        createConstantSource: () => makeNode({ offset: recordingParam(), start() {}, stop() {} }),
         createBiquadFilter: () =>
             makeNode({
                 frequency: recordingParam(),
@@ -112,8 +111,7 @@ describe("OneShotNoisePatch.onExpired", () => {
         // back up to the held peak.
         const anchored = newCalls.find(
             (c) =>
-                c.kind === "cancelAndHoldAtTime" ||
-                (c.kind === "setValueAtTime" && c.time === 0.1),
+                c.kind === "cancelAndHoldAtTime" || (c.kind === "setValueAtTime" && c.time === 0.1),
         );
         expect(anchored).toBeDefined();
         // Must NOT cut directly to 0 at the expire time — that would skip the
@@ -150,8 +148,7 @@ describe("OneShotOscillatorPatch.onExpired", () => {
         const newCalls = gainCalls.slice(beforeExpire);
         const anchored = newCalls.find(
             (c) =>
-                c.kind === "cancelAndHoldAtTime" ||
-                (c.kind === "setValueAtTime" && c.time === 0.1),
+                c.kind === "cancelAndHoldAtTime" || (c.kind === "setValueAtTime" && c.time === 0.1),
         );
         expect(anchored).toBeDefined();
         const hardCut = newCalls.find(

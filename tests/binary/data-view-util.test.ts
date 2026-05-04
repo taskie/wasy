@@ -46,9 +46,15 @@ describe("dataViewGetUintVariable", () => {
         // 0x80 0x00 -> 0x80 (128)
         expect(dataViewGetUintVariable(dv(0x81, 0x00), 0)).toEqual({ value: 0x80, byteLength: 2 });
         // 0xff 0x7f -> 0x3fff (16383, max 2-byte VLQ)
-        expect(dataViewGetUintVariable(dv(0xff, 0x7f), 0)).toEqual({ value: 0x3fff, byteLength: 2 });
+        expect(dataViewGetUintVariable(dv(0xff, 0x7f), 0)).toEqual({
+            value: 0x3fff,
+            byteLength: 2,
+        });
         // 0x81 0x80 0x00 -> 0x4000 (16384)
-        expect(dataViewGetUintVariable(dv(0x81, 0x80, 0x00), 0)).toEqual({ value: 0x4000, byteLength: 3 });
+        expect(dataViewGetUintVariable(dv(0x81, 0x80, 0x00), 0)).toEqual({
+            value: 0x4000,
+            byteLength: 3,
+        });
         // 0xff 0xff 0xff 0x7f -> 0x0fffffff (max 4-byte SMF VLQ)
         expect(dataViewGetUintVariable(dv(0xff, 0xff, 0xff, 0x7f), 0)).toEqual({
             value: 0x0fffffff,
@@ -57,7 +63,10 @@ describe("dataViewGetUintVariable", () => {
     });
 
     it("respects byteOffset", () => {
-        expect(dataViewGetUintVariable(dv(0xaa, 0x81, 0x00), 1)).toEqual({ value: 0x80, byteLength: 2 });
+        expect(dataViewGetUintVariable(dv(0xaa, 0x81, 0x00), 1)).toEqual({
+            value: 0x80,
+            byteLength: 2,
+        });
     });
 });
 

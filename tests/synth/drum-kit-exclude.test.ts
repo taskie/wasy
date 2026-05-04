@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Event, NoteOnEvent } from "../../src/midi/event.js";
 import { Instrument } from "../../src/midi/instrument.js";
-import {
-    compileDrumKit,
-    type DrumKitDefinition,
-    type Monophony,
-} from "../../src/synth.js";
+import { compileDrumKit, type DrumKitDefinition, type Monophony } from "../../src/synth.js";
 import { gmDrumKit } from "../../src/synth/patches/gm-drum-kit.js";
 
 const recordingParam = (initial = 0) => ({
@@ -32,8 +28,7 @@ const makeAudioContext = () => {
         sampleRate: 44100,
         createStereoPanner: () => makeNode({ pan: recordingParam() }),
         createGain: () => makeNode({ gain: recordingParam() }),
-        createConstantSource: () =>
-            makeNode({ offset: recordingParam(), start() {}, stop() {} }),
+        createConstantSource: () => makeNode({ offset: recordingParam(), start() {}, stop() {} }),
         createBiquadFilter: () =>
             makeNode({
                 frequency: recordingParam(),

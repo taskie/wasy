@@ -132,18 +132,18 @@ export class Instrument<T> {
     private _modDepth: GainNode;
 
     // Initialized via resetAllControl() called from the constructor.
-    volume!: number;        //  7
-    panpot!: number;        // 10
-    expression!: number;    // 11
+    volume!: number; //  7
+    panpot!: number; // 10
+    expression!: number; // 11
     pitchBend!: number;
     pitchBendRange!: number;
 
-    bankMSB!: number;       //  0
-    bankLSB!: number;       // 32
+    bankMSB!: number; //  0
+    bankLSB!: number; // 32
 
     // Channel-wide tuning (RPN 1 / RPN 2). Values are in cents.
-    fineTune!: number;      // RPN 1: ±100 cents  (14-bit, center 0x2000)
-    coarseTune!: number;    // RPN 2: ±64 semitones × 100 cents (7-bit MSB, center 0x40)
+    fineTune!: number; // RPN 1: ±100 cents  (14-bit, center 0x2000)
+    coarseTune!: number; // RPN 2: ±64 semitones × 100 cents (7-bit MSB, center 0x40)
 
     // CC 1 — Modulation Wheel. 0 = no vibrato; 127 = ±50 cents at 5 Hz.
     modulationValue!: number;
@@ -172,7 +172,10 @@ export class Instrument<T> {
     // to receiveRPN / receiveNRPN accordingly.
     private _lastParamType: "rpn" | "nrpn" = "rpn";
 
-    constructor(public audioContext: AudioContext, public destination: AudioNode) {
+    constructor(
+        public audioContext: AudioContext,
+        public destination: AudioNode,
+    ) {
         this.notePool = new NotePool<T>();
         this.notePool.onExpired(this._expiredListener.bind(this));
         this._expiredEmitter = createSignal<ExpiredMessage<T>>();
@@ -224,14 +227,22 @@ export class Instrument<T> {
         this.resetAllControl();
     }
 
-    get detuneOffset(): ConstantSourceNode { return this._detuneOffset; }
+    get detuneOffset(): ConstantSourceNode {
+        return this._detuneOffset;
+    }
     // Output of the modulation LFO scaled by `_modDepth.gain` (cents).
     // Patches connect this into each note's detune param on NoteOn.
-    get modulation(): AudioNode { return this._modDepth; }
+    get modulation(): AudioNode {
+        return this._modDepth;
+    }
     // Wet send taps — SynthEngine routes channelGain into these and their
     // output into the engine-level Reverb / Chorus inputs.
-    get reverbSend(): GainNode { return this._reverbSend; }
-    get chorusSend(): GainNode { return this._chorusSend; }
+    get reverbSend(): GainNode {
+        return this._reverbSend;
+    }
+    get chorusSend(): GainNode {
+        return this._chorusSend;
+    }
 
     // Reset all controllers to GM defaults AND ramp the corresponding
     // audio params back to those defaults. This is the form that matches
@@ -274,8 +285,8 @@ export class Instrument<T> {
         this._sustainedNoteOffs.clear();
 
         this.dataEntry = 0;
-        this.rpn = 0x3FFF;   // null RPN
-        this.nrpn = 0x3FFF;  // null NRPN
+        this.rpn = 0x3fff; // null RPN
+        this.nrpn = 0x3fff; // null NRPN
         this._lastParamType = "rpn";
     }
 
@@ -284,9 +295,17 @@ export class Instrument<T> {
         this._sustainedNoteOffs.clear();
         this._expiredEmitter.offAll();
         this._programChangeEmitter.offAll();
-        try { this._detuneOffset.stop(); } catch { /* already stopped */ }
+        try {
+            this._detuneOffset.stop();
+        } catch {
+            /* already stopped */
+        }
         this._detuneOffset.disconnect();
-        try { this._modLfo.stop(); } catch { /* already stopped */ }
+        try {
+            this._modLfo.stop();
+        } catch {
+            /* already stopped */
+        }
         this._modLfo.disconnect();
         this._modDepth.disconnect();
         this._filter.disconnect();
@@ -311,12 +330,12 @@ export class Instrument<T> {
 
     setVolume(volume: number, time: number) {
         this.volume = volume;
-        this._rampGain(volume / 127 * this.expression / 127, time);
+        this._rampGain(((volume / 127) * this.expression) / 127, time);
     }
 
     setExpression(expression: number, time: number) {
         this.expression = expression;
-        this._rampGain(this.volume / 127 * expression / 127, time);
+        this._rampGain(((this.volume / 127) * expression) / 127, time);
     }
 
     private _rampGain(target: number, time: number) {
@@ -349,7 +368,7 @@ export class Instrument<T> {
         // 0..127 → 0..50 cents of vibrato amplitude. ±50 cents at 5 Hz is
         // the classic "expressive" vibrato range; full-on still leaves the
         // pitch within a quarter-tone of the nominal note.
-        this._rampParam(this._modDepth.gain, value / 127 * 50, time);
+        this._rampParam(this._modDepth.gain, (value / 127) * 50, time);
     }
 
     setFilterCutoff(value: number, time: number) {
@@ -383,12 +402,14 @@ export class Instrument<T> {
     // The setter only adjusts pitchBend; fine/coarse tune stay as-is.
     set detune(detune: number) {
         const residual = detune - this.fineTune - this.coarseTune * 100;
-        this.pitchBend = residual / 100 / this.pitchBendRange * 8192;
+        this.pitchBend = (residual / 100 / this.pitchBendRange) * 8192;
     }
     get detune() {
-        return this.pitchBend / 8192 * this.pitchBendRange * 100
-            + this.fineTune
-            + this.coarseTune * 100;
+        return (
+            (this.pitchBend / 8192) * this.pitchBendRange * 100 +
+            this.fineTune +
+            this.coarseTune * 100
+        );
     }
 
     registerNote(noteNumber: number, data: T, time: number) {
@@ -430,65 +451,65 @@ export class Instrument<T> {
     receiveEvent(event: midi.Event, time: number) {
         if (event instanceof midi.ControlChangeEvent) {
             switch (event.controller) {
-                case 0:     // BankSelectMSB
+                case 0: // BankSelectMSB
                     this.bankMSB = event.value;
                     break;
-                case 32:    // BankSelectLSB
+                case 32: // BankSelectLSB
                     this.bankLSB = event.value;
                     break;
-                case 7:     // Volume
+                case 7: // Volume
                     this.setVolume(event.value, time);
                     break;
-                case 10:    // Panpot
+                case 10: // Panpot
                     this.setPanpot(event.value, time);
                     break;
-                case 11:    // Expression
+                case 11: // Expression
                     this.setExpression(event.value, time);
                     break;
-                case 1:     // Modulation Wheel
+                case 1: // Modulation Wheel
                     this.setModulation(event.value, time);
                     break;
-                case 71:    // Filter Resonance
+                case 71: // Filter Resonance
                     this.setFilterResonance(event.value, time);
                     break;
-                case 74:    // Brightness / Filter Cutoff
+                case 74: // Brightness / Filter Cutoff
                     this.setFilterCutoff(event.value, time);
                     break;
-                case 91:    // Reverb Send
+                case 91: // Reverb Send
                     this.setReverbSend(event.value, time);
                     break;
-                case 93:    // Chorus Send
+                case 93: // Chorus Send
                     this.setChorusSend(event.value, time);
                     break;
-                case 64:    // Sustain (Damper) Pedal
+                case 64: // Sustain (Damper) Pedal
                     this.setSustain(event.value, time);
                     break;
-                case 6:     // DataEntryMSB
+                case 6: // DataEntryMSB
                     this.dataEntry &= 0b00000001111111;
                     this.dataEntry |= event.value << 7;
                     this._dispatchDataEntry(time);
                     break;
-                case 38:    // DataEntryLSB
+                case 38: // DataEntryLSB
                     this.dataEntry &= 0b11111110000000;
                     this.dataEntry |= event.value;
                     this._dispatchDataEntry(time);
                     break;
-                case 98:    // NRPN LSB
+                case 98: // NRPN LSB
                     this.nrpn &= 0b11111110000000;
                     this.nrpn |= event.value;
                     this._lastParamType = "nrpn";
                     break;
-                case 99:    // NRPN MSB
+                case 99: // NRPN MSB
                     this.nrpn &= 0b00000001111111;
                     this.nrpn |= event.value << 7;
                     this._lastParamType = "nrpn";
                     break;
-                case 100:   // RPN LSB
+                case 100: // RPN LSB
                     this.rpn &= 0b11111110000000;
                     this.rpn |= event.value;
                     this._lastParamType = "rpn";
                     break;
-                case 101:   // RPN MSB
+                case 101: // RPN MSB
                     this.rpn &= 0b00000001111111;
                     this.rpn |= event.value << 7;
                     this._lastParamType = "rpn";
@@ -550,10 +571,10 @@ export class Instrument<T> {
 
     private _dispatchDataEntry(time: number) {
         if (this._lastParamType === "rpn") {
-            if (this.rpn === 0x3FFF) return;
+            if (this.rpn === 0x3fff) return;
             this.receiveRPN(this.rpn, this.dataEntry, time);
         } else {
-            if (this.nrpn === 0x3FFF) return;
+            if (this.nrpn === 0x3fff) return;
             this.receiveNRPN(this.nrpn, this.dataEntry, time);
         }
     }
@@ -561,15 +582,15 @@ export class Instrument<T> {
     receiveRPN(rpn: number, data: number, time: number) {
         switch (rpn) {
             case 0: // pitch bend range: MSB = semitones, LSB = cents
-                this.pitchBendRange = ((data >> 7) & 0x7F) + ((data & 0x7F) / 100);
+                this.pitchBendRange = ((data >> 7) & 0x7f) + (data & 0x7f) / 100;
                 this._updateDetuneOffset(time);
                 break;
             case 1: // channel fine tuning: 14-bit, center 0x2000, ±100 cents
-                this.fineTune = (data - 0x2000) / 0x2000 * 100;
+                this.fineTune = ((data - 0x2000) / 0x2000) * 100;
                 this._updateDetuneOffset(time);
                 break;
             case 2: // channel coarse tuning: MSB only, center 0x40, ±64 semitones
-                this.coarseTune = ((data >> 7) & 0x7F) - 0x40;
+                this.coarseTune = ((data >> 7) & 0x7f) - 0x40;
                 this._updateDetuneOffset(time);
                 break;
             default:

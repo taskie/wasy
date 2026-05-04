@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Instrument, type Patch } from "../../src/midi/instrument.js";
-import {
-    Event,
-    NoteOffEvent,
-    NoteOnEvent,
-} from "../../src/midi/event.js";
+import { Event, NoteOffEvent, NoteOnEvent } from "../../src/midi/event.js";
 
 const fakeParam = () => ({
     value: 0,
@@ -17,14 +13,17 @@ const fakeNode = (extras: Record<string, unknown> = {}) => ({
     disconnect() {},
     ...extras,
 });
-const fakeAudioContext = (): AudioContext => ({
-    currentTime: 0,
-    createStereoPanner: () => fakeNode({ pan: fakeParam() }),
-    createGain: () => fakeNode({ gain: fakeParam() }),
-    createConstantSource: () => fakeNode({ offset: fakeParam(), start() {}, stop() {} }),
-    createBiquadFilter: () => fakeNode({ frequency: fakeParam(), Q: fakeParam(), type: "lowpass" }),
-    createOscillator: () => fakeNode({ frequency: fakeParam(), type: "sine", start() {}, stop() {} }),
-}) as unknown as AudioContext;
+const fakeAudioContext = (): AudioContext =>
+    ({
+        currentTime: 0,
+        createStereoPanner: () => fakeNode({ pan: fakeParam() }),
+        createGain: () => fakeNode({ gain: fakeParam() }),
+        createConstantSource: () => fakeNode({ offset: fakeParam(), start() {}, stop() {} }),
+        createBiquadFilter: () =>
+            fakeNode({ frequency: fakeParam(), Q: fakeParam(), type: "lowpass" }),
+        createOscillator: () =>
+            fakeNode({ frequency: fakeParam(), type: "sine", start() {}, stop() {} }),
+    }) as unknown as AudioContext;
 
 const dv = (...bytes: number[]) => new DataView(Uint8Array.from(bytes).buffer);
 const noteOn = (channel: number, note: number, vel: number) =>
@@ -32,7 +31,7 @@ const noteOn = (channel: number, note: number, vel: number) =>
 const noteOff = (channel: number, note: number) =>
     Event.create(dv(note, 0x40), 0, 0x80 | channel) as NoteOffEvent;
 const cc = (channel: number, controller: number, value: number) =>
-    Event.create(dv(controller, value), 0, 0xB0 | channel);
+    Event.create(dv(controller, value), 0, 0xb0 | channel);
 
 class RecordingPatch implements Patch<unknown> {
     received: Array<{ event: Event; time: number }> = [];
@@ -87,7 +86,9 @@ describe("Instrument sustain pedal (CC 64)", () => {
         // Pedal up at time 5
         inst.receiveEvent(cc(0, 64, 0), 5);
         const offs = patch.received
-            .filter((r): r is { event: NoteOffEvent; time: number } => r.event instanceof NoteOffEvent)
+            .filter(
+                (r): r is { event: NoteOffEvent; time: number } => r.event instanceof NoteOffEvent,
+            )
             .map((r) => ({ note: r.event.noteNumber, time: r.time }));
         expect(offs).toEqual([
             { note: 60, time: 5 },
@@ -137,13 +138,13 @@ describe("Instrument sustain pedal (CC 64)", () => {
 describe("Instrument.applyReset", () => {
     it("resets all controller state to GM defaults", () => {
         const { inst } = makeInstrument();
-        inst.receiveEvent(cc(0, 7, 50), 0);   // Volume
-        inst.receiveEvent(cc(0, 11, 80), 0);  // Expression
+        inst.receiveEvent(cc(0, 7, 50), 0); // Volume
+        inst.receiveEvent(cc(0, 11, 80), 0); // Expression
         inst.receiveEvent(cc(0, 10, 100), 0); // Panpot
-        inst.receiveEvent(cc(0, 1, 64), 0);   // Modulation
+        inst.receiveEvent(cc(0, 1, 64), 0); // Modulation
         inst.receiveEvent(cc(0, 64, 127), 0); // Sustain
-        inst.receiveEvent(cc(0, 91, 80), 0);  // Reverb send
-        inst.receiveEvent(cc(0, 93, 80), 0);  // Chorus send
+        inst.receiveEvent(cc(0, 91, 80), 0); // Reverb send
+        inst.receiveEvent(cc(0, 93, 80), 0); // Chorus send
         expect(inst.volume).toBe(50);
         expect(inst.expression).toBe(80);
         expect(inst.modulationValue).toBe(64);
