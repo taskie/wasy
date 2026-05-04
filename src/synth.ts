@@ -225,8 +225,11 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 		duration: number,
 		public fixedFrequency?: number,
 		oscillatorType?: OscillatorType,
-		destination?: AudioNode) {
-		super(instrument, 1, 0, duration, oscillatorType, destination);
+		destination?: AudioNode,
+		valueAtBegin = 1,
+		valueAtEnd = 0,
+	) {
+		super(instrument, valueAtBegin, valueAtEnd, duration, oscillatorType, destination);
 	}
 
 	override onNoteOn(event: midi.NoteOnEvent, time: number): SimpleOscillatorMonophony {
@@ -268,6 +271,11 @@ export class DrumKitPatch extends Patch<Monophony> {
 	leftPanpot: StereoPannerNode;
 	rightPanpot: StereoPannerNode;
 	gain: GainNode;
+	// SF2 exclusive class semantics: when a voice in a group attacks, the
+	// other members of the same group are expired (the struck voice does
+	// not kill itself). Populated by `compileDrumKit` from the
+	// `excludeGroup` field on each voice definition.
+	excludeGroups: Map<number, Set<number>>;
 
 	constructor(
 		instrument: inst.Instrument<Monophony>,
@@ -290,27 +298,8 @@ export class DrumKitPatch extends Patch<Monophony> {
 		this.rightPanpot = rp;
 		rp.pan.value = (96 - 64) / 64;
 		rp.connect(ga);
-		// assign
-		this.patchMap = {
-			0: new OneShotNoisePatch(is, 1, 0, 0.05, undefined, ga), // default
-			35: new OneShotOscillatorPatch(is, 0.2, 140, "sine", ga), // Bass Drum 2
-			36: new OneShotOscillatorPatch(is, 0.2, 150, "square", ga), // Bass Drum 1
-			37: new OneShotNoisePatch(is, 1, 0, 0.1, 2000, ga), // Side Stick
-			38: new OneShotNoisePatch(is, 1, 0, 0.3, 1000, ga), // Snare Drum 1
-			39: new OneShotNoisePatch(is, 1, 0, 0.4, 3000, ga), // Hand Clap
-			40: new OneShotNoisePatch(is, 1, 0, 0.5, 1500, ga), // Snare Drum 2
-			41: new OneShotOscillatorPatch(is, 0.3, 200, "sine", rp), // Low Tom 2
-			42: new OneShotNoisePatch(is, 1, 0, 0.1, 6000, lp), // Closed Hi-hat
-			43: new OneShotOscillatorPatch(is, 0.3, 250, "sine", rp), // Low Tom 1
-			44: new OneShotNoisePatch(is, 1, 0, 0.1, 5000, lp), // Pedal Hi-hat
-			45: new OneShotOscillatorPatch(is, 0.3, 350, "sine", rp), // Mid Tom 2
-			46: new OneShotNoisePatch(is, 1, 0, 0.3, 6000, lp), // Open Hi-hat
-			47: new OneShotOscillatorPatch(is, 0.3, 400, "sine", rp), // Mid Tom 1
-			48: new OneShotOscillatorPatch(is, 0.3, 500, "sine", rp), // High Tom 2
-			49: new OneShotNoisePatch(is, 1, 0, 1.5, 8000, ga), // Crash Cymbal 1
-			50: new OneShotOscillatorPatch(is, 0.3, 550, "sine", rp), // High Tom 1
-			51: new OneShotNoisePatch(is, 1, 0, 0.5, 16000, ga), // Ride Cymbal 1
-		};
+		this.patchMap = {};
+		this.excludeGroups = new Map();
 	}
 
 	override onNoteOn(event: midi.NoteOnEvent, time: number): Monophony {
@@ -319,11 +308,11 @@ export class DrumKitPatch extends Patch<Monophony> {
 			index = 0;
 		}
 		const patch = this.patchMap[index];
-		const hiHats = [42, 44, 46];
-		if (hiHats.indexOf(index) !== -1) {
-			for (const hiHat of hiHats) {
-				if (hiHat === index) continue;
-				this.instrument.expireNote(hiHat, time);
+		for (const members of this.excludeGroups.values()) {
+			if (!members.has(index)) continue;
+			for (const member of members) {
+				if (member === index) continue;
+				this.instrument.expireNote(member, time);
 			}
 		}
 		const monophony = patch.onNoteOn(event, time);
@@ -340,69 +329,19 @@ export class DrumKitPatch extends Patch<Monophony> {
 	}
 }
 
-const oscillatorTypeMap: ReadonlyMap<number, OscillatorType> = new Map([
-	[0x00, "sine"],
-	[0x01, "triangle"],
-	[0x02, "triangle"],
-	[0x03, "triangle"],
-	[0x04, "triangle"],
-	[0x05, "triangle"],
-
-	[0x10, "sine"],
-	[0x11, "sine"],
-	[0x12, "sine"],
-	[0x13, "sine"],
-	[0x14, "triangle"],
-
-	[0x1D, "sawtooth"],
-	[0x1E, "sawtooth"],
-
-	[0x30, "triangle"],
-	[0x31, "triangle"],
-	[0x32, "triangle"],
-	[0x33, "triangle"],
-
-	[0x51, "sawtooth"],
-]);
-
-// Per-category fallback (8 programs per GM category, 16 categories).
-// Used when `oscillatorTypeMap` has no entry for the program.
-const categoryDefaults: ReadonlyArray<OscillatorType> = [
-	"triangle", // 0x00 Piano
-	"sine",     // 0x08 Chromatic Percussion
-	"sine",     // 0x10 Organ
-	"sawtooth", // 0x18 Guitar
-	"triangle", // 0x20 Bass
-	"sawtooth", // 0x28 Strings
-	"sawtooth", // 0x30 Ensemble
-	"sawtooth", // 0x38 Brass
-	"square",   // 0x40 Reed
-	"triangle", // 0x48 Pipe
-	"sawtooth", // 0x50 Synth Lead
-	"triangle", // 0x58 Synth Pad
-	"sawtooth", // 0x60 Synth Effects
-	"square",   // 0x68 Ethnic
-	"square",   // 0x70 Percussive
-	"sine",     // 0x78 SFX
-];
-
-export const generatePatch = (
-	instrument: inst.Instrument<Monophony>,
-	program: number,
-	isDrum = false,
-): Patch<Monophony> => {
-	if (isDrum) {
-		return new DrumKitPatch(instrument);
-	}
-	if (program === 0x77) {
-		return new GainedNoisePatch(instrument, 0, 1, 1);
-	}
-	if (program === 0x7E) {
-		return new NoisePatch(instrument);
-	}
-	const oscillatorType = oscillatorTypeMap.get(program) ?? categoryDefaults[program >> 3];
-	if (program <= 0x05) {
-		return new GainedOscillatorPatch(instrument, 1.2, 0.1, 0.7, oscillatorType);
-	}
-	return new SimpleOscillatorPatch(instrument, oscillatorType);
-};
+export { generatePatch } from "./synth/generate-patch.js";
+export { compileDrumKit, compileTone } from "./synth/compile.js";
+export type {
+	AdsrEnvelope,
+	DrumKitDefinition,
+	DrumRouting,
+	DrumVoiceDefinition,
+	Envelope,
+	FrequencySpec,
+	NoiseSource,
+	OscillatorSource,
+	PatchDefinition,
+	RampEnvelope,
+	ToneDefinition,
+	ToneSource,
+} from "./synth/types.js";

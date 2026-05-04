@@ -1,4 +1,5 @@
 export const instrumentPatchs = [
+    "Acoustic Grand Piano",
     "Bright Piano",
     "Electric Grand Piano",
     "Honky-tonk Piano",
