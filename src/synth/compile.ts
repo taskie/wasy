@@ -22,17 +22,28 @@ const fixedFrequencyOf = (spec: { fixed: number } | "tracking" | undefined): num
     return spec.fixed;
 };
 
-// Apply non-default ADSR fields onto a patch so callers can leave
-// `decay` / `sustain` undefined and inherit `Patch`'s defaults
-// (5 ms / 0 / 1 / 50 ms — see `synth/patch.ts`).
+// Apply non-default AHDSFR fields onto a patch so callers can leave
+// `hold` / `decay` / `sustain` / `fade` undefined and inherit `Patch`'s
+// defaults (5 ms / 0 / 0 / 1 / 0 / 50 ms — see `synth/patch.ts`). The
+// type alias / discriminator stay named "adsr" for backward compat;
+// hold / fade are optional extensions over the classic envelope.
 const applyAdsrOverrides = (
     patch: Patch<Monophony>,
-    envelope: { attack: number; decay?: number; sustain?: number; release: number },
+    envelope: {
+        attack: number;
+        hold?: number;
+        decay?: number;
+        sustain?: number;
+        fade?: number;
+        release: number;
+    },
 ) => {
     patch.attackTime = envelope.attack;
     patch.releaseTime = envelope.release;
+    if (envelope.hold !== undefined) patch.holdTime = envelope.hold;
     if (envelope.decay !== undefined) patch.decayTime = envelope.decay;
     if (envelope.sustain !== undefined) patch.sustainLevel = envelope.sustain;
+    if (envelope.fade !== undefined) patch.fadeTime = envelope.fade;
 };
 
 const compileOscillatorTone = (
@@ -86,8 +97,8 @@ const compileNoiseTone = (
         if (def.oneShot) {
             throw new Error("compileTone: ADSR + oneShot is not supported");
         }
-        // `NoisePatch` doesn't support `fixedFrequency`; fall through to
-        // `GainedNoisePatch` only when a ramp envelope is requested.
+        // `NoisePatch` doesn't support `fixedFrequency`; the ramp envelope
+        // path through `GainedNoisePatch` is the only way to set one today.
         const patch = new NoisePatch(instrument, destination);
         applyAdsrOverrides(patch, env);
         return patch;

@@ -87,9 +87,12 @@ describe("compileTone", () => {
         expect(patch).toBeInstanceOf(SimpleOscillatorPatch);
         expect(patch.attackTime).toBe(0.01);
         expect(patch.releaseTime).toBe(0.2);
-        // decay / sustain unspecified → keep base defaults from synth/patch.ts.
+        // hold / decay / sustain / fade unspecified → keep base defaults
+        // from synth/patch.ts.
+        expect(patch.holdTime).toBe(0);
         expect(patch.decayTime).toBe(0);
         expect(patch.sustainLevel).toBe(1);
+        expect(patch.fadeTime).toBe(0);
     });
 
     it("oscillator + adsr with decay/sustain overrides those fields too", () => {
@@ -101,6 +104,29 @@ describe("compileTone", () => {
         const patch = compileTone(inst, def);
         expect(patch.decayTime).toBe(0.1);
         expect(patch.sustainLevel).toBe(0.5);
+    });
+
+    it("oscillator + adsr with hold/fade overrides those fields", () => {
+        const inst = makeInstrument();
+        const def: ToneDefinition = {
+            source: { kind: "oscillator", oscillatorType: "sine" },
+            envelope: {
+                type: "adsr",
+                attack: 0.005,
+                hold: 0.02,
+                decay: 0.3,
+                sustain: 0.5,
+                fade: 4,
+                release: 0.1,
+            },
+        };
+        const patch = compileTone(inst, def);
+        expect(patch.attackTime).toBe(0.005);
+        expect(patch.holdTime).toBe(0.02);
+        expect(patch.decayTime).toBe(0.3);
+        expect(patch.sustainLevel).toBe(0.5);
+        expect(patch.fadeTime).toBe(4);
+        expect(patch.releaseTime).toBe(0.1);
     });
 
     it("oscillator + ramp + !oneShot → GainedOscillatorPatch", () => {

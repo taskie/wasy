@@ -7,13 +7,27 @@
 // these into the existing `Patch` class hierarchy; the audio path is
 // unchanged.
 
-// All envelope times are in seconds. `sustain` is a 0..1 multiplier
-// applied to the velocity-derived peak gain.
+// AHDSFR envelope (Attack / Hold / Decay / Sustain / Fade / Release).
+// All times are in seconds; `sustain` is a 0..1 multiplier applied to the
+// velocity-derived peak gain. Hold and Fade are optional extensions over
+// classic ADSR:
+//   - `hold` keeps the gain pinned at peak for `hold` seconds between
+//     the end of attack and the start of decay (mallet-style articulation).
+//   - `fade` linearly ramps the gain from the sustain level down to 0
+//     over `fade` seconds while the key is still held — useful for pads
+//     and long tones that should slowly diminish even before NoteOff.
+// Setting `hold` / `fade` to 0 (or omitting them) reduces the envelope
+// to plain ADSR, so existing patches stay backward-compatible. The type
+// alias and discriminator tag keep the legacy `Adsr` / `"adsr"` names
+// for the same reason — JSON literals authored against the older schema
+// continue to deserialize unchanged.
 export type AdsrEnvelope = {
     type: "adsr";
     attack: number;
+    hold?: number;
     decay?: number;
     sustain?: number;
+    fade?: number;
     release: number;
 };
 

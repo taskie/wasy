@@ -11,13 +11,15 @@ export class Monophony {
 export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
     tuning: tuning.Tuning;
 
-    // ADSR envelope (in seconds; sustainLevel is 0..1 multiplier on peak).
+    // AHDSFR envelope (in seconds; sustainLevel is 0..1 multiplier on peak).
     // Defaults model a sustained tone with click-killing endpoints:
     //   - attackTime  = 5 ms  (short enough to feel instantaneous, long
     //                          enough to avoid the sample-boundary click
     //                          that `gain.value = peak` produces)
+    //   - holdTime    = 0     (no hold → decay starts immediately after attack)
     //   - decayTime   = 0     (no decay → sustain at peak)
     //   - sustainLevel = 1
+    //   - fadeTime    = 0     (no in-sustain fade)
     //   - releaseTime = 50 ms (perceptible but quick fade — replaces the
     //                          old `setValueAtTime(0, time)` instant cut
     //                          that produced clicks at NoteOff and made
@@ -25,8 +27,10 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
     // Subclasses override these on construction. Percussive one-shots
     // keep their own ramp envelope and simply leave NoteOff as a no-op.
     attackTime = 0.005;
+    holdTime = 0;
     decayTime = 0;
     sustainLevel = 1;
+    fadeTime = 0;
     releaseTime = 0.05;
 
     constructor(
@@ -46,12 +50,12 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
         return this.instrument.audioContext;
     }
 
-    // Schedule attack → decay → sustain on `gainParam`. Starts at `time`
-    // (not `currentTime`), so callers that schedule with the player's
-    // 200 ms lookahead get the envelope aligned to the audio time of the
-    // note. Always returns having scheduled at least one event at `time`,
-    // so a subsequent `applyRelease(time')` (with `time' > time`) sees
-    // a defined value to hold.
+    // Schedule attack → hold → decay → sustain → fade on `gainParam`.
+    // Starts at `time` (not `currentTime`), so callers that schedule with
+    // the player's 200 ms lookahead get the envelope aligned to the audio
+    // time of the note. Always returns having scheduled at least one
+    // event at `time`, so a subsequent `applyRelease(time')` (with
+    // `time' > time`) sees a defined value to hold.
     protected applyAttack(gainParam: AudioParam, peakGain: number, time: number) {
         gainParam.cancelScheduledValues(time);
         if (this.attackTime > 0) {
@@ -60,11 +64,22 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
         } else {
             gainParam.setValueAtTime(peakGain, time);
         }
+        let phaseEnd = time + this.attackTime;
+        if (this.holdTime > 0) {
+            // Anchor peak at the end of hold so the next ramp starts from peak.
+            phaseEnd += this.holdTime;
+            gainParam.setValueAtTime(peakGain, phaseEnd);
+        }
+        const sustainGain = peakGain * this.sustainLevel;
         if (this.decayTime > 0 && this.sustainLevel < 1) {
-            gainParam.linearRampToValueAtTime(
-                peakGain * this.sustainLevel,
-                time + this.attackTime + this.decayTime,
-            );
+            phaseEnd += this.decayTime;
+            gainParam.linearRampToValueAtTime(sustainGain, phaseEnd);
+        }
+        if (this.fadeTime > 0 && sustainGain > 0) {
+            // Linear fade from the (possibly already decayed) sustain level
+            // down to 0 over `fadeTime`. NoteOff still triggers
+            // applyRelease normally; fade only affects the held-key region.
+            gainParam.linearRampToValueAtTime(0, phaseEnd + this.fadeTime);
         }
     }
 
