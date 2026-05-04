@@ -38,6 +38,7 @@
         "lint": "oxlint",
         "fmt": "oxfmt src tests examples *.json *.md",
         "fmt:check": "oxfmt --check src tests examples *.json *.md",
+        "prepare": "git config core.hooksPath scripts/hooks",
         "prepublishOnly": "npm run rebuild"
     },
     "devDependencies": {
