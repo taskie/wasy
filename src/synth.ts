@@ -178,9 +178,19 @@ export class OneShotNoisePatch extends GainedNoisePatch {
 
 	override onExpired(monophony: NoiseMonophony, time: number) {
 		super.onExpired(monophony, time);
-		monophony.source.stop(time);
-		monophony.gain.gain.cancelScheduledValues(time);
-		monophony.gain.gain.setValueAtTime(0, time);
+		// Anchor the in-flight decay ramp at `time` so the gain doesn't
+		// snap back up to the held peak value during the player's
+		// lookahead window — that would make long-decay percussion
+		// (e.g. Crash 1) audibly swell right before the next hit.
+		const gainParam = monophony.gain.gain;
+		if (typeof gainParam.cancelAndHoldAtTime === "function") {
+			gainParam.cancelAndHoldAtTime(time);
+		} else {
+			gainParam.cancelScheduledValues(time);
+			gainParam.setValueAtTime(gainParam.value, time);
+		}
+		gainParam.linearRampToValueAtTime(0, time + 0.005);
+		monophony.source.stop(time + 0.005);
 	}
 }
 
@@ -239,9 +249,17 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
 
 	override onExpired(monophony: SimpleOscillatorMonophony, time: number) {
 		super.onExpired(monophony, time);
-		monophony.oscillator.stop(time);
-		monophony.gain.gain.cancelScheduledValues(time);
-		monophony.gain.gain.setValueAtTime(0, time);
+		// See OneShotNoisePatch.onExpired for the rationale; same lookahead
+		// hazard applies to oscillator-driven one-shot drums.
+		const gainParam = monophony.gain.gain;
+		if (typeof gainParam.cancelAndHoldAtTime === "function") {
+			gainParam.cancelAndHoldAtTime(time);
+		} else {
+			gainParam.cancelScheduledValues(time);
+			gainParam.setValueAtTime(gainParam.value, time);
+		}
+		gainParam.linearRampToValueAtTime(0, time + 0.005);
+		monophony.oscillator.stop(time + 0.005);
 	}
 }
 
