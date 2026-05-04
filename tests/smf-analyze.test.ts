@@ -23,11 +23,12 @@ import {
 //   delta=480 ch1 NoteOn note=72 vel=80      → re-trigger; closes the prior note at tick 960
 //   delta=480 ch1 NoteOff note=72 vel=0      → ends at tick 1440
 //   delta=0   EndOfTrack
+const text = (typeIndex: number, s: string) => {
+    const bytes = [...s].map((c) => c.charCodeAt(0));
+    return [0xff, typeIndex, bytes.length, ...bytes];
+};
+
 const buildSmf = () => {
-    const text = (typeIndex: number, s: string) => {
-        const bytes = [...s].map((c) => c.charCodeAt(0));
-        return [0xff, typeIndex, bytes.length, ...bytes];
-    };
     const header = [
         0x4d, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x01, 0xe0,
     ];

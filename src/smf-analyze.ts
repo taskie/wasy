@@ -263,6 +263,8 @@ export const tickToBarBeat = (
     return { bar, beat };
 };
 
+const pad2 = (n: number) => n.toString().padStart(2, "0");
+
 // Format helper for "mm:ss" (or "h:mm:ss" if ≥ 1 hour). Negative inputs are
 // clamped to 0; sub-second fractions are truncated. Pure presentation, lives
 // alongside the analysis helpers because the seek UI needs it everywhere
@@ -272,9 +274,8 @@ export const formatTime = (seconds: number): string => {
     const s = total % 60;
     const m = Math.floor(total / 60) % 60;
     const h = Math.floor(total / 3600);
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
-    return `${pad(m)}:${pad(s)}`;
+    if (h > 0) return `${h}:${pad2(m)}:${pad2(s)}`;
+    return `${pad2(m)}:${pad2(s)}`;
 };
 
 export const buildSongInfo = (song: smf.Song): SongInfo => ({
