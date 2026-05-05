@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Patch Editor — wasy</title>
+        <link rel="stylesheet" href="/src/style.css" />
+    </head>
+    <body>
+        <header class="app-header">
+            <h1>Patch Editor</h1>
+            <div class="header-controls">
+                <div class="mode-toggle">
+                    <button id="melodyModeBtn" class="active">Melody</button>
+                    <button id="drumModeBtn">Drum</button>
+                </div>
+                <label class="ctrl-label">
+                    MIDI In
+                    <select id="midiInputSelect">
+                        <option value="">None</option>
+                    </select>
+                </label>
+                <label class="ctrl-label">
+                    Velocity
+                    <input type="range" id="velocitySlider" min="1" max="127" value="80" />
+                    <output id="velocityReadout">80</output>
+                </label>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <!-- Left: JSON editor -->
+            <section class="panel json-panel">
+                <h2>JSON</h2>
+                <textarea id="jsonEditor" spellcheck="false"></textarea>
+                <div class="panel-actions">
+                    <button id="applyJsonBtn">Apply</button>
+                    <button id="copyJsonBtn">Copy</button>
+                    <span id="jsonStatus" class="json-status"></span>
+                </div>
+            </section>
+
+            <!-- Center: parameter editor (melody mode) -->
+            <section class="panel params-panel" id="melodyParamsPanel">
+                <h2>Source</h2>
+                <div class="field-group">
+                    <label class="field">
+                        <span>Kind</span>
+                        <select id="sourceKind">
+                            <option value="oscillator">Oscillator</option>
+                            <option value="noise">Noise</option>
+                        </select>
+                    </label>
+                    <label class="field" id="oscTypeField">
+                        <span>Osc type</span>
+                        <select id="oscType">
+                            <option value="sine">Sine</option>
+                            <option value="square">Square</option>
+                            <option value="triangle">Triangle</option>
+                            <option value="sawtooth">Sawtooth</option>
+                        </select>
+                    </label>
+                    <label class="field" id="pitchField">
+                        <span>Pitch</span>
+                        <select id="pitchSpec">
+                            <option value="tracking">Tracking</option>
+                            <option value="fixed">Fixed Hz</option>
+                        </select>
+                    </label>
+                    <label class="field" id="pitchHzField" style="display: none">
+                        <span>Hz</span>
+                        <input
+                            type="number"
+                            id="pitchHz"
+                            value="440"
+                            min="1"
+                            max="20000"
+                            step="1"
+                        />
+                    </label>
+                    <label class="field" id="filterFreqField" style="display: none">
+                        <span>Filter freq</span>
+                        <select id="filterFreqSpec">
+                            <option value="tracking">Tracking</option>
+                            <option value="fixed">Fixed Hz</option>
+                        </select>
+                    </label>
+                    <label class="field" id="filterFreqHzField" style="display: none">
+                        <span>Hz</span>
+                        <input
+                            type="number"
+                            id="filterFreqHz"
+                            value="2000"
+                            min="20"
+                            max="20000"
+                            step="10"
+                        />
+                    </label>
+                </div>
+
+                <h2>Envelope</h2>
+                <div class="field-group">
+                    <label class="field">
+                        <span>Type</span>
+                        <select id="envType">
+                            <option value="adsr">ADSR (AHDSFR)</option>
+                            <option value="ramp">Ramp</option>
+                        </select>
+                    </label>
+                    <div id="adsrFields">
+                        <label class="field">
+                            <span>Attack (s)</span>
+                            <input
+                                type="range"
+                                id="attack"
+                                min="0"
+                                max="5"
+                                step="0.001"
+                                value="0.005"
+                            />
+                            <output id="attackOut">0.005</output>
+                        </label>
+                        <label class="field">
+                            <span>Hold (s)</span>
+                            <input type="range" id="hold" min="0" max="5" step="0.001" value="0" />
+                            <output id="holdOut">0</output>
+                        </label>
+                        <label class="field">
+                            <span>Decay (s)</span>
+                            <input type="range" id="decay" min="0" max="5" step="0.001" value="0" />
+                            <output id="decayOut">0</output>
+                        </label>
+                        <label class="field">
+                            <span>Sustain</span>
+                            <input
+                                type="range"
+                                id="sustain"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value="1"
+                            />
+                            <output id="sustainOut">1</output>
+                        </label>
+                        <label class="field">
+                            <span>Fade (s)</span>
+                            <input type="range" id="fade" min="0" max="30" step="0.1" value="0" />
+                            <output id="fadeOut">0</output>
+                        </label>
+                        <label class="field">
+                            <span>Release (s)</span>
+                            <input
+                                type="range"
+                                id="release"
+                                min="0.001"
+                                max="5"
+                                step="0.001"
+                                value="0.05"
+                            />
+                            <output id="releaseOut">0.05</output>
+                        </label>
+                    </div>
+                    <div id="rampFields" style="display: none">
+                        <label class="field">
+                            <span>Begin</span>
+                            <input
+                                type="range"
+                                id="rampBegin"
+                                min="0"
+                                max="2"
+                                step="0.01"
+                                value="1"
+                            />
+                            <output id="rampBeginOut">1</output>
+                        </label>
+                        <label class="field">
+                            <span>End</span>
+                            <input
+                                type="range"
+                                id="rampEnd"
+                                min="0"
+                                max="2"
+                                step="0.01"
+                                value="0"
+                            />
+                            <output id="rampEndOut">0</output>
+                        </label>
+                        <label class="field">
+                            <span>Duration (s)</span>
+                            <input
+                                type="range"
+                                id="rampDuration"
+                                min="0.01"
+                                max="5"
+                                step="0.01"
+                                value="0.5"
+                            />
+                            <output id="rampDurationOut">0.5</output>
+                        </label>
+                    </div>
+                    <label class="field checkbox-field">
+                        <input type="checkbox" id="oneShotCheck" />
+                        <span>One-shot (ramp only)</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Drum kit panel -->
+            <section class="panel params-panel" id="drumParamsPanel" style="display: none">
+                <h2>Drum Kit</h2>
+                <label class="field">
+                    <span>Bus gain</span>
+                    <input type="range" id="busGain" min="0" max="4" step="0.01" value="2" />
+                    <output id="busGainOut">2</output>
+                </label>
+
+                <h2>Voices</h2>
+                <div class="voice-list" id="voiceList"></div>
+
+                <div id="voiceEditorPanel" style="display: none">
+                    <h2>Edit voice <span id="voiceEditorNote"></span></h2>
+                    <div class="field-group">
+                        <label class="field">
+                            <span>Routing</span>
+                            <select id="voiceRouting">
+                                <option value="center">Center</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span>Exclude group</span>
+                            <input
+                                type="number"
+                                id="voiceExcludeGroup"
+                                min="0"
+                                max="127"
+                                value="0"
+                            />
+                        </label>
+                        <label class="field">
+                            <span>Kind</span>
+                            <select id="voiceSourceKind">
+                                <option value="oscillator">Oscillator</option>
+                                <option value="noise">Noise</option>
+                            </select>
+                        </label>
+                        <label class="field" id="voiceOscTypeField">
+                            <span>Osc type</span>
+                            <select id="voiceOscType">
+                                <option value="sine">Sine</option>
+                                <option value="square">Square</option>
+                                <option value="triangle">Triangle</option>
+                                <option value="sawtooth">Sawtooth</option>
+                            </select>
+                        </label>
+                        <label class="field" id="voicePitchField">
+                            <span>Pitch</span>
+                            <select id="voicePitchSpec">
+                                <option value="tracking">Tracking</option>
+                                <option value="fixed">Fixed Hz</option>
+                            </select>
+                        </label>
+                        <label class="field" id="voicePitchHzField" style="display: none">
+                            <span>Hz</span>
+                            <input
+                                type="number"
+                                id="voicePitchHz"
+                                value="150"
+                                min="1"
+                                max="20000"
+                                step="1"
+                            />
+                        </label>
+                        <label class="field" id="voiceFilterFreqField" style="display: none">
+                            <span>Filter freq</span>
+                            <select id="voiceFilterFreqSpec">
+                                <option value="tracking">Tracking</option>
+                                <option value="fixed">Fixed Hz</option>
+                            </select>
+                        </label>
+                        <label class="field" id="voiceFilterFreqHzField" style="display: none">
+                            <span>Hz</span>
+                            <input
+                                type="number"
+                                id="voiceFilterFreqHz"
+                                value="2000"
+                                min="20"
+                                max="20000"
+                                step="10"
+                            />
+                        </label>
+                        <label class="field">
+                            <span>Env type</span>
+                            <select id="voiceEnvType">
+                                <option value="ramp">Ramp</option>
+                                <option value="adsr">ADSR</option>
+                            </select>
+                        </label>
+                        <div id="voiceRampFields">
+                            <label class="field">
+                                <span>Begin</span>
+                                <input
+                                    type="range"
+                                    id="voiceRampBegin"
+                                    min="0"
+                                    max="2"
+                                    step="0.01"
+                                    value="1"
+                                />
+                                <output id="voiceRampBeginOut">1</output>
+                            </label>
+                            <label class="field">
+                                <span>End</span>
+                                <input
+                                    type="range"
+                                    id="voiceRampEnd"
+                                    min="0"
+                                    max="2"
+                                    step="0.01"
+                                    value="0"
+                                />
+                                <output id="voiceRampEndOut">0</output>
+                            </label>
+                            <label class="field">
+                                <span>Duration (s)</span>
+                                <input
+                                    type="range"
+                                    id="voiceRampDuration"
+                                    min="0.01"
+                                    max="5"
+                                    step="0.01"
+                                    value="0.1"
+                                />
+                                <output id="voiceRampDurationOut">0.1</output>
+                            </label>
+                        </div>
+                        <div id="voiceAdsrFields" style="display: none">
+                            <label class="field">
+                                <span>Attack (s)</span>
+                                <input
+                                    type="range"
+                                    id="voiceAttack"
+                                    min="0"
+                                    max="5"
+                                    step="0.001"
+                                    value="0.005"
+                                />
+                                <output id="voiceAttackOut">0.005</output>
+                            </label>
+                            <label class="field">
+                                <span>Release (s)</span>
+                                <input
+                                    type="range"
+                                    id="voiceRelease"
+                                    min="0.001"
+                                    max="5"
+                                    step="0.001"
+                                    value="0.05"
+                                />
+                                <output id="voiceReleaseOut">0.05</output>
+                            </label>
+                        </div>
+                        <label class="field checkbox-field">
+                            <input type="checkbox" id="voiceOneShot" checked />
+                            <span>One-shot</span>
+                        </label>
+                    </div>
+                    <div class="panel-actions">
+                        <button id="applyVoiceBtn">Apply voice</button>
+                        <button id="deleteVoiceBtn">Delete voice</button>
+                    </div>
+                </div>
+                <div class="panel-actions" style="margin-top: 8px">
+                    <button id="addVoiceBtn">Add voice at selected key</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Bottom: interactive piano keyboard -->
+        <div class="keyboard-section">
+            <canvas id="keyboardCanvas" width="1120" height="100"></canvas>
+            <div class="keyboard-hint">Click to play · Web MIDI input supported</div>
+        </div>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

@@ -10,6 +10,23 @@ export { Wasy } from "./wasy.js";
 export type { TimedEvent } from "./wasy.js";
 export { SmfPlayer } from "./smf-player.js";
 export { SynthEngine, isDrumChannel } from "./synth-engine.js";
+export { Instrument } from "./midi/instrument.js";
+export type { Monophony, Patch } from "./synth/patch.js";
+export { compileTone, compileDrumKit } from "./synth/compile.js";
+export type {
+    AdsrEnvelope,
+    DrumKitDefinition,
+    DrumRouting,
+    DrumVoiceDefinition,
+    Envelope,
+    FrequencySpec,
+    NoiseSource,
+    OscillatorSource,
+    PatchDefinition,
+    RampEnvelope,
+    ToneDefinition,
+    ToneSource,
+} from "./synth/types.js";
 export type {
     Note,
     SongMetadata,

@@ -1,0 +1,316 @@
+:root {
+    --bg: #002b36;
+    --bg2: #073642;
+    --border: #586e75;
+    --accent: #dc322f;
+    --text: #839496;
+    --text-bright: #eee8d5;
+    --text-dim: #586e75;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, sans-serif;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.mode-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.mode-toggle button {
+    background: transparent;
+    color: var(--accent);
+    border: none;
+    padding: 3px 10px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.85em;
+}
+
+.mode-toggle button.active {
+    background: var(--accent);
+    color: var(--bg);
+}
+
+.ctrl-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    color: var(--text-dim);
+}
+
+.ctrl-label input[type="range"] {
+    accent-color: var(--accent);
+    width: 90px;
+}
+
+.ctrl-label select {
+    background: var(--bg2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font: inherit;
+}
+
+.ctrl-label output {
+    font-variant-numeric: tabular-nums;
+    min-width: 3ch;
+}
+
+.main-layout {
+    display: flex;
+    flex: 1;
+    gap: 0;
+    overflow: hidden;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    min-width: 0;
+}
+
+.json-panel {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.params-panel {
+    flex: 1;
+    max-width: 420px;
+}
+
+h2 {
+    margin: 0 0 8px 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--bg2);
+    padding-bottom: 4px;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.field {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+}
+
+.field span {
+    font-size: 0.85em;
+    color: var(--text-dim);
+}
+
+.field select,
+.field input[type="number"] {
+    background: var(--bg2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font: inherit;
+    width: 100%;
+}
+
+.field input[type="range"] {
+    accent-color: var(--accent);
+    width: 100%;
+}
+
+.field output {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85em;
+    min-width: 5ch;
+    text-align: right;
+}
+
+.checkbox-field {
+    grid-template-columns: auto 1fr;
+}
+
+.checkbox-field input[type="checkbox"] {
+    accent-color: var(--accent);
+}
+
+#jsonEditor {
+    flex: 1;
+    background: var(--bg2);
+    color: var(--text-bright);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8em;
+    resize: none;
+    line-height: 1.4;
+    tab-size: 2;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.panel-actions button {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 3px 10px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.85em;
+    border-radius: 3px;
+}
+
+.panel-actions button:hover {
+    background: var(--accent);
+    color: var(--bg);
+}
+
+.panel-actions button.danger {
+    color: #b58900;
+    border-color: #b58900;
+}
+
+.panel-actions button.danger:hover {
+    background: #b58900;
+    color: var(--bg);
+}
+
+.json-status {
+    font-size: 0.8em;
+    color: #2aa198;
+}
+
+.json-status.error {
+    color: var(--accent);
+}
+
+/* Voice list */
+.voice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.voice-row {
+    display: grid;
+    grid-template-columns: 3ch 1fr auto;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.82em;
+    border: 1px solid transparent;
+}
+
+.voice-row:hover {
+    background: var(--bg2);
+}
+
+.voice-row.selected {
+    border-color: var(--accent);
+    background: var(--bg2);
+}
+
+.voice-row-note {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+}
+
+.voice-row-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.voice-row-badge {
+    font-size: 0.75em;
+    color: var(--text-dim);
+    background: var(--bg);
+    border-radius: 2px;
+    padding: 1px 4px;
+}
+
+/* Keyboard */
+.keyboard-section {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    padding: 6px 0 4px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+#keyboardCanvas {
+    display: block;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.keyboard-hint {
+    font-size: 0.75em;
+    color: var(--text-dim);
+}
