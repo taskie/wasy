@@ -5,6 +5,7 @@ import { KeyboardView } from "./keyboard-view.js";
 import { AnalyserView } from "./analyser-view.js";
 import { MixerView } from "./mixer-view.js";
 import { EventLogView } from "./event-log-view.js";
+import { initPanels } from "./panels.js";
 
 const q = <T extends Element>(selector: string): T => {
     const el = document.querySelector<T>(selector);
@@ -379,5 +380,6 @@ class Application {
 
 const app = new Application();
 document.addEventListener("DOMContentLoaded", () => {
+    initPanels();
     app.start();
 });

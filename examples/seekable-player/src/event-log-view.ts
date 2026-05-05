@@ -184,7 +184,7 @@ const eventToRow = (e: TimedEvent): Row | null => {
 // from the host's animation-frame loop) flushes the queue into the DOM.
 export class EventLogView {
     private filters: Record<Category, boolean> = {
-        note: true,
+        note: false,
         cc: true,
         bend: true,
         program: true,
