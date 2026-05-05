@@ -5,6 +5,7 @@ import { KeyboardView } from "./keyboard-view.js";
 import { AnalyserView } from "./analyser-view.js";
 import { MixerView } from "./mixer-view.js";
 import { EventLogView } from "./event-log-view.js";
+import { ChannelStatusView } from "./channel-status-view.js";
 import { initPanels } from "./panels.js";
 import { type ThemeMode, initTheme, setThemeMode, getCurrentMode } from "./theme.js";
 
@@ -54,6 +55,7 @@ class Application {
     private analyserView!: AnalyserView;
     private mixerView!: MixerView;
     private eventLogView!: EventLogView;
+    private channelStatusView!: ChannelStatusView;
     private isUserSeeking = false;
     private hasBuffer = false;
 
@@ -104,6 +106,13 @@ class Application {
 
         this.mixerView = new MixerView(q<HTMLElement>("#mixer"));
         this.eventLogView = new EventLogView(q<HTMLElement>("#eventLog"));
+
+        const channelStatusCanvas = q<HTMLCanvasElement>("#channelStatusCanvas");
+        this.channelStatusView = new ChannelStatusView(
+            channelStatusCanvas.getContext("2d")!,
+            channelStatusCanvas.width,
+            channelStatusCanvas.height,
+        );
 
         // Construct / resume AudioContext on the click that opens the file
         // picker — that click is a guaranteed user gesture. The later `change`
@@ -192,6 +201,7 @@ class Application {
         this.synth!.receiveEvent(e.midiEvent, time);
         this.keyboardView.onTimedEvent(e);
         this.eventLogView.onTimedEvent(e);
+        this.channelStatusView.onTimedEvent(e);
     }
 
     private async onFileChange(e: Event) {
@@ -228,6 +238,7 @@ class Application {
         this.pianoRollView.setTimeSignatureMap(songInfo.timeSignatureMap);
         this.keyboardView.clear();
         this.eventLogView.clear();
+        this.channelStatusView.clear();
 
         this.hasBuffer = true;
         player.play();
@@ -374,6 +385,7 @@ class Application {
         this.pianoRollView.draw();
         this.keyboardView.draw();
         this.analyserView.draw();
+        this.channelStatusView.draw();
         this.eventLogView.draw();
         requestAnimationFrame(() => this.tick());
     }

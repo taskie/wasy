@@ -11,6 +11,7 @@ export type { TimedEvent } from "./wasy.js";
 export { SmfPlayer } from "./smf-player.js";
 export { SynthEngine, isDrumChannel } from "./synth-engine.js";
 export { Instrument } from "./midi/instrument.js";
+export { instrumentPatchs, percussionKeyMap } from "./midi/gm.js";
 export type { Monophony, Patch } from "./synth/patch.js";
 export { compileTone, compileDrumKit } from "./synth/compile.js";
 export type {
