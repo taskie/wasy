@@ -32,6 +32,7 @@ class Application {
 
     private seekBar!: HTMLInputElement;
     private seekReadout!: HTMLOutputElement;
+    private seekTempoReadout!: HTMLOutputElement;
     private seekTimeReadout!: HTMLOutputElement;
     private seekBarBeatReadout!: HTMLOutputElement;
     private playButton!: HTMLButtonElement;
@@ -63,6 +64,7 @@ class Application {
         // Audio is deferred — see ensureAudio(). Only DOM/views are wired here.
         this.seekBar = q<HTMLInputElement>("#seekBar");
         this.seekReadout = q<HTMLOutputElement>("#seekReadout");
+        this.seekTempoReadout = q<HTMLOutputElement>("#seekTempoReadout");
         this.seekTimeReadout = q<HTMLOutputElement>("#seekTimeReadout");
         this.seekBarBeatReadout = q<HTMLOutputElement>("#seekBarBeatReadout");
         this.playButton = q<HTMLButtonElement>("#playButton");
@@ -340,11 +342,23 @@ class Application {
         this.refreshButtons();
     }
 
+    private bpmAtTick(tick: number): number {
+        const tempoMap = this.songInfo?.tempoMap ?? [];
+        let µsPerQ = smfAnalyze.DEFAULT_MICROSECONDS_PER_QUARTER;
+        for (const change of tempoMap) {
+            if (change.tick > tick) break;
+            µsPerQ = change.microsecondsPerQuarter;
+        }
+        return 60_000_000 / µsPerQ;
+    }
+
     private updateReadout(tick: number) {
         const info = this.songInfo;
         const total = info?.durationTicks ?? 0;
         this.seekReadout.value = `${tick} / ${total} tick`;
         if (info != null) {
+            const bpm = this.bpmAtTick(tick);
+            this.seekTempoReadout.value = `${bpm.toFixed(2)} BPM`;
             const seconds = smfAnalyze.tickToSeconds(tick, info.tempoMap, info.resolution);
             const totalSeconds = smfAnalyze.tickToSeconds(total, info.tempoMap, info.resolution);
             this.seekTimeReadout.value = `${smfAnalyze.formatTime(seconds)} / ${smfAnalyze.formatTime(totalSeconds)}`;
@@ -355,6 +369,7 @@ class Application {
             );
             this.seekBarBeatReadout.value = `${bar}:${beat}`;
         } else {
+            this.seekTempoReadout.value = "—";
             this.seekTimeReadout.value = "00:00 / 00:00";
             this.seekBarBeatReadout.value = "1:1";
         }
