@@ -1,6 +1,53 @@
+/* ------------------------------------------------------------------ */
+/* Solarized Dark (default) */
+/* ------------------------------------------------------------------ */
+:root {
+    --color-bg: #002b36;
+    --color-bg-alt: #073642;
+    --color-border: #586e75;
+    --color-fg: #dc322f;
+    --color-muted: #93a1a1;
+    --color-strong: #eee8d5;
+    --color-accent: #dc322f;
+    --color-on-accent: #002b36;
+    --color-shadow: rgba(0, 0, 0, 0.6);
+}
+
+/* ------------------------------------------------------------------ */
+/* Solarized Light — system preference (no explicit override) */
+/* ------------------------------------------------------------------ */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+        --color-bg: #fdf6e3;
+        --color-bg-alt: #eee8d5;
+        --color-border: #93a1a1;
+        --color-fg: #586e75;
+        --color-muted: #93a1a1;
+        --color-strong: #073642;
+        --color-accent: #dc322f;
+        --color-on-accent: #fdf6e3;
+        --color-shadow: rgba(0, 0, 0, 0.12);
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Solarized Light — explicit */
+/* ------------------------------------------------------------------ */
+:root[data-theme="light"] {
+    --color-bg: #fdf6e3;
+    --color-bg-alt: #eee8d5;
+    --color-border: #93a1a1;
+    --color-fg: #586e75;
+    --color-muted: #93a1a1;
+    --color-strong: #073642;
+    --color-accent: #dc322f;
+    --color-on-accent: #fdf6e3;
+    --color-shadow: rgba(0, 0, 0, 0.12);
+}
+
 body {
-    color: #dc322f;
-    background-color: #002b36;
+    color: var(--color-fg);
+    background-color: var(--color-bg);
     font-family: system-ui, sans-serif;
     margin: 0;
     padding: 0;
@@ -26,8 +73,8 @@ h2 {
     left: 0;
     right: 0;
     height: 48px;
-    background: #073642;
-    border-bottom: 1px solid #586e75;
+    background: var(--color-bg-alt);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     gap: 0;
@@ -50,6 +97,7 @@ h2 {
     gap: 2px 10px;
     overflow: hidden;
     align-content: center;
+    flex: 1;
 }
 
 .view-toggle {
@@ -63,9 +111,46 @@ h2 {
 }
 
 .view-toggle input {
-    accent-color: #dc322f;
+    accent-color: var(--color-accent);
     margin: 0;
     cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ */
+/* Theme selector */
+/* ------------------------------------------------------------------ */
+.theme-selector {
+    display: flex;
+    flex-shrink: 0;
+    margin-left: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.theme-btn {
+    background: transparent;
+    color: var(--color-muted);
+    border: none;
+    border-left: 1px solid var(--color-border);
+    padding: 3px 8px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.75em;
+    white-space: nowrap;
+}
+
+.theme-btn:first-child {
+    border-left: none;
+}
+
+.theme-btn:hover {
+    color: var(--color-fg);
+}
+
+.theme-btn.active {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
 }
 
 section.partition {
@@ -75,9 +160,9 @@ section.partition {
     margin: 0;
     padding: 12px;
     border-radius: 5px;
-    border: 1px solid #dc322f;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-    background-color: #002b36;
+    border: 1px solid var(--color-accent);
+    box-shadow: 0 4px 20px var(--color-shadow);
+    background-color: var(--color-bg);
 }
 
 .panel-titlebar {
@@ -102,7 +187,7 @@ section.partition {
     flex-shrink: 0;
     background: transparent;
     border: none;
-    color: #dc322f;
+    color: var(--color-accent);
     cursor: pointer;
     font-size: 1.1rem;
     line-height: 1;
@@ -140,8 +225,8 @@ dl.meta dd {
 
 .transport button {
     background: transparent;
-    color: #dc322f;
-    border: 1px solid #dc322f;
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
     padding: 4px 12px;
     cursor: pointer;
     font: inherit;
@@ -149,8 +234,8 @@ dl.meta dd {
 }
 
 .transport button:hover:not(:disabled) {
-    background: #dc322f;
-    color: #002b36;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
 }
 
 .transport button:disabled {
@@ -166,7 +251,7 @@ dl.meta dd {
 
 .seek input[type="range"] {
     flex: 1;
-    accent-color: #dc322f;
+    accent-color: var(--color-accent);
 }
 
 .seek output {
@@ -203,16 +288,16 @@ dl.meta dd {
 canvas {
     margin: 0;
     display: block;
-    background: #073642;
+    background: var(--color-bg-alt);
     border-radius: 3px;
 }
 
 a {
-    color: #dc322f;
+    color: var(--color-accent);
 }
 
 code {
-    background: #073642;
+    background: var(--color-bg-alt);
     padding: 1px 4px;
     border-radius: 2px;
 }
@@ -238,7 +323,7 @@ code {
 }
 
 .mixer-row-master {
-    border-bottom: 1px solid #586e75;
+    border-bottom: 1px solid var(--color-border);
     padding-bottom: 6px;
     margin-bottom: 4px;
 }
@@ -259,8 +344,8 @@ code {
 
 .mixer-buttons button {
     background: transparent;
-    color: #93a1a1;
-    border: 1px solid #586e75;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
     padding: 2px 6px;
     cursor: pointer;
     font: inherit;
@@ -270,17 +355,17 @@ code {
 }
 
 .mixer-buttons button:hover {
-    border-color: #93a1a1;
+    border-color: var(--color-muted);
 }
 
 .mixer-buttons button.active {
-    background: #dc322f;
-    color: #002b36;
-    border-color: #dc322f;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    border-color: var(--color-accent);
 }
 
 .mixer-slider {
-    accent-color: #dc322f;
+    accent-color: var(--color-accent);
     width: 100%;
 }
 
@@ -314,7 +399,7 @@ code {
 }
 
 .event-log-filter input {
-    accent-color: #dc322f;
+    accent-color: var(--color-accent);
     cursor: pointer;
 }
 
@@ -324,8 +409,8 @@ code {
 
 .event-log-controls button {
     background: transparent;
-    color: #93a1a1;
-    border: 1px solid #586e75;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
     padding: 2px 8px;
     cursor: pointer;
     font: inherit;
@@ -334,17 +419,17 @@ code {
 }
 
 .event-log-controls button:hover {
-    border-color: #93a1a1;
+    border-color: var(--color-muted);
 }
 
 .event-log-controls button.active {
-    background: #dc322f;
-    color: #002b36;
-    border-color: #dc322f;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    border-color: var(--color-accent);
 }
 
 .event-log-list {
-    background: #073642;
+    background: var(--color-bg-alt);
     border-radius: 3px;
     padding: 6px 8px;
     max-height: 240px;
@@ -352,7 +437,7 @@ code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 0.85em;
     line-height: 1.4;
-    color: #93a1a1;
+    color: var(--color-muted);
 }
 
 .event-log-row {
@@ -366,7 +451,7 @@ code {
 .event-log-tick {
     font-variant-numeric: tabular-nums;
     text-align: right;
-    color: #586e75;
+    color: var(--color-border);
 }
 
 .event-log-channel {
@@ -374,7 +459,7 @@ code {
 }
 
 .event-log-type {
-    color: #eee8d5;
+    color: var(--color-strong);
 }
 
 .event-log-detail {

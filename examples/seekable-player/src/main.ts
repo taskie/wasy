@@ -6,6 +6,7 @@ import { AnalyserView } from "./analyser-view.js";
 import { MixerView } from "./mixer-view.js";
 import { EventLogView } from "./event-log-view.js";
 import { initPanels } from "./panels.js";
+import { type ThemeMode, initTheme, setThemeMode, getCurrentMode } from "./theme.js";
 
 const q = <T extends Element>(selector: string): T => {
     const el = document.querySelector<T>(selector);
@@ -378,8 +379,25 @@ class Application {
     }
 }
 
+initTheme();
+
 const app = new Application();
 document.addEventListener("DOMContentLoaded", () => {
     initPanels();
     app.start();
+
+    const themeBtns = document.querySelectorAll<HTMLButtonElement>(".theme-btn");
+    const syncThemeBtns = (mode: ThemeMode) => {
+        for (const btn of themeBtns) {
+            btn.classList.toggle("active", btn.dataset.themeValue === mode);
+        }
+    };
+    for (const btn of themeBtns) {
+        btn.addEventListener("click", () => {
+            const mode = btn.dataset.themeValue as ThemeMode;
+            setThemeMode(mode);
+            syncThemeBtns(mode);
+        });
+    }
+    syncThemeBtns(getCurrentMode());
 });

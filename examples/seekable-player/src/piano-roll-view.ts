@@ -1,5 +1,5 @@
 import type { Note, TimeSignatureChange } from "wasy";
-import { BLACK_KEY, SOLARIZED, channelColor } from "./palette.js";
+import { BLACK_KEY, getCanvasPalette, channelColor } from "./palette.js";
 
 export class PianoRollView {
     static readonly KEYBOARD_WIDTH = 36;
@@ -85,33 +85,34 @@ export class PianoRollView {
 
     draw() {
         const ctx = this.ctx;
-        ctx.fillStyle = SOLARIZED.base03;
+        const p = getCanvasPalette();
+        ctx.fillStyle = p.bg;
         ctx.fillRect(0, 0, this.width, this.height);
 
-        this.drawLanes();
-        this.drawGrid();
-        this.drawNotes();
-        this.drawNowLine();
-        this.drawKeyboard();
+        this.drawLanes(p);
+        this.drawGrid(p);
+        this.drawNotes(p);
+        this.drawNowLine(p);
+        this.drawKeyboard(p);
     }
 
-    private drawLanes() {
+    private drawLanes(p: ReturnType<typeof getCanvasPalette>) {
         const ctx = this.ctx;
         const ph = this.pitchHeight;
         // Black-key row tinting in the roll area.
-        ctx.fillStyle = SOLARIZED.base02;
-        for (let p = this.lowPitch; p <= this.highPitch; ++p) {
-            if (BLACK_KEY[p % 12] === "1") {
-                ctx.fillRect(this.rollX, this.pitchToY(p), this.rollWidth, ph);
+        ctx.fillStyle = p.bgAlt;
+        for (let pitch = this.lowPitch; pitch <= this.highPitch; ++pitch) {
+            if (BLACK_KEY[pitch % 12] === "1") {
+                ctx.fillRect(this.rollX, this.pitchToY(pitch), this.rollWidth, ph);
             }
         }
     }
 
-    private drawGrid() {
+    private drawGrid(p: ReturnType<typeof getCanvasPalette>) {
         const ctx = this.ctx;
         const visStart = this.currentTick - PianoRollView.NOW_RATIO * this.visibleTicks;
         const visEnd = visStart + this.visibleTicks;
-        ctx.strokeStyle = SOLARIZED.base01;
+        ctx.strokeStyle = p.gridLine;
         ctx.lineWidth = 1;
         // Walk the time-signature map as a sequence of [start, end) segments.
         // Each segment carries its own (numerator, denominator), which sets
@@ -155,9 +156,9 @@ export class PianoRollView {
         drawSegment(cursor, Number.POSITIVE_INFINITY, numerator, denominator);
         ctx.globalAlpha = 0.35;
         // C-line accents (octave separators).
-        for (let p = this.lowPitch; p <= this.highPitch; ++p) {
-            if (p % 12 === 0) {
-                const y = this.pitchToY(p) + this.pitchHeight;
+        for (let pitch = this.lowPitch; pitch <= this.highPitch; ++pitch) {
+            if (pitch % 12 === 0) {
+                const y = this.pitchToY(pitch) + this.pitchHeight;
                 ctx.beginPath();
                 ctx.moveTo(this.rollX, y);
                 ctx.lineTo(this.width, y);
@@ -167,7 +168,7 @@ export class PianoRollView {
         ctx.globalAlpha = 1;
     }
 
-    private drawNotes() {
+    private drawNotes(p: ReturnType<typeof getCanvasPalette>) {
         const ctx = this.ctx;
         const ph = this.pitchHeight;
         const visStart = this.currentTick - PianoRollView.NOW_RATIO * this.visibleTicks;
@@ -193,7 +194,7 @@ export class PianoRollView {
             // Outline played-portion vs. unplayed-portion divider for active note.
             if (active) {
                 const splitX = Math.max(rollX, Math.min(rollR, this.nowX));
-                ctx.fillStyle = SOLARIZED.base2;
+                ctx.fillStyle = p.noteOverlay;
                 ctx.globalAlpha = 0.18;
                 ctx.fillRect(left, y, splitX - left, Math.max(1, ph - 1));
                 ctx.globalAlpha = 1;
@@ -201,9 +202,9 @@ export class PianoRollView {
         }
     }
 
-    private drawNowLine() {
+    private drawNowLine(p: ReturnType<typeof getCanvasPalette>) {
         const ctx = this.ctx;
-        ctx.strokeStyle = SOLARIZED.red;
+        ctx.strokeStyle = p.accent;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(this.nowX, 0);
@@ -211,36 +212,36 @@ export class PianoRollView {
         ctx.stroke();
     }
 
-    private drawKeyboard() {
+    private drawKeyboard(p: ReturnType<typeof getCanvasPalette>) {
         const ctx = this.ctx;
         const ph = this.pitchHeight;
         const kw = PianoRollView.KEYBOARD_WIDTH;
         // White-key background.
-        ctx.fillStyle = SOLARIZED.base2;
+        ctx.fillStyle = p.keyWhite;
         ctx.fillRect(0, 0, kw, this.height);
-        for (let p = this.lowPitch; p <= this.highPitch; ++p) {
-            const y = this.pitchToY(p);
-            if (BLACK_KEY[p % 12] === "1") {
-                ctx.fillStyle = SOLARIZED.base03;
+        for (let pitch = this.lowPitch; pitch <= this.highPitch; ++pitch) {
+            const y = this.pitchToY(pitch);
+            if (BLACK_KEY[pitch % 12] === "1") {
+                ctx.fillStyle = p.keyBlack;
                 ctx.fillRect(0, y, kw * 0.62, ph);
             }
-            if (p % 12 === 0) {
+            if (pitch % 12 === 0) {
                 // C label + octave separator
-                ctx.strokeStyle = SOLARIZED.base01;
+                ctx.strokeStyle = p.label;
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(0, y + ph);
                 ctx.lineTo(kw, y + ph);
                 ctx.stroke();
                 if (ph >= 6) {
-                    ctx.fillStyle = SOLARIZED.base01;
+                    ctx.fillStyle = p.label;
                     ctx.font = "9px sans-serif";
-                    const octave = p / 12 - 1;
+                    const octave = pitch / 12 - 1;
                     ctx.fillText(`C${octave}`, kw * 0.66, y + ph - 1);
                 }
             }
         }
-        ctx.strokeStyle = SOLARIZED.base01;
+        ctx.strokeStyle = p.label;
         ctx.lineWidth = 1;
         ctx.strokeRect(0.5, 0.5, kw - 1, this.height - 1);
     }

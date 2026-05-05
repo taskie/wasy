@@ -1,5 +1,5 @@
 import { midi, type TimedEvent } from "wasy";
-import { BLACK_KEY, SOLARIZED, channelColor } from "./palette.js";
+import { BLACK_KEY, getCanvasPalette, channelColor } from "./palette.js";
 
 // 16-row × 128-key activity grid mirroring the original simple-player. NoteOn
 // flips the cell on, NoteOff flips it off — there is no decay/release shading.
@@ -31,9 +31,10 @@ export class KeyboardView {
 
     draw() {
         const ctx = this.ctx;
+        const p = getCanvasPalette();
         const w = this.width / 128;
         const h = this.height / 16;
-        ctx.fillStyle = SOLARIZED.base03;
+        ctx.fillStyle = p.bg;
         ctx.fillRect(0, 0, this.width, this.height);
         for (let ch = 0; ch < 16; ++ch) {
             for (let n = 0; n < 128; ++n) {
@@ -43,12 +44,12 @@ export class KeyboardView {
                     ctx.fillRect(n * w, ch * h + 1, w, h - 2);
                 } else if (BLACK_KEY[n % 12] !== "1") {
                     // White-key idle background tint.
-                    ctx.fillStyle = SOLARIZED.base02;
+                    ctx.fillStyle = p.bgAlt;
                     ctx.fillRect(n * w, ch * h + 1, w, h - 2);
                 }
             }
             // Channel label on the far left.
-            ctx.fillStyle = SOLARIZED.base01;
+            ctx.fillStyle = p.label;
             ctx.font = "9px sans-serif";
             ctx.fillText(`ch ${ch + 1}`, 2, ch * h + h - 2);
         }

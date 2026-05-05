@@ -12,14 +12,14 @@ const PANEL_CONFIGS: PanelConfig[] = [
         id: "panel-transport",
         label: "Transport / Seek",
         defaultX: 5,
-        defaultY: 330,
+        defaultY: 350,
         defaultVisible: true,
     },
     {
         id: "panel-analyser",
         label: "Waveform / Spectrum",
         defaultX: 5,
-        defaultY: 500,
+        defaultY: 520,
         defaultVisible: true,
     },
     {

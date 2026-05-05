@@ -1,4 +1,4 @@
-import { SOLARIZED } from "./palette.js";
+import { getCanvasPalette } from "./palette.js";
 
 export class AnalyserView {
     private array: Uint8Array<ArrayBuffer> | null = null;
@@ -17,7 +17,8 @@ export class AnalyserView {
 
     draw() {
         const ctx = this.ctx;
-        ctx.fillStyle = SOLARIZED.base03;
+        const p = getCanvasPalette();
+        ctx.fillStyle = p.bg;
         ctx.fillRect(0, 0, this.width, this.height);
         const analyser = this._analyser;
         const arr = this.array;
@@ -27,13 +28,13 @@ export class AnalyserView {
         // under the curve).
         analyser.getByteFrequencyData(arr);
         this.plotPath(arr, true);
-        ctx.fillStyle = SOLARIZED.base02;
+        ctx.fillStyle = p.bgAlt;
         ctx.fill();
 
         // Time-domain waveform line (open path, just stroked).
         analyser.getByteTimeDomainData(arr);
         this.plotPath(arr, false);
-        ctx.strokeStyle = SOLARIZED.red;
+        ctx.strokeStyle = p.accent;
         ctx.lineWidth = 1;
         ctx.stroke();
     }
