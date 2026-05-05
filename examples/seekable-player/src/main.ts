@@ -57,6 +57,10 @@ class Application {
     private mixerView!: MixerView;
     private eventLogView!: EventLogView;
     private channelStatusView!: ChannelStatusView;
+    private songSelector!: HTMLSelectElement;
+    private sampleSongs!: HTMLElement;
+    private songs: { name: string; artist?: string; file: string }[] = [];
+    private songDirectory = "";
     private isUserSeeking = false;
     private hasBuffer = false;
 
@@ -82,6 +86,8 @@ class Application {
         this.metaMarkers = q<HTMLElement>("#metaMarkers");
         this.metaText = q<HTMLElement>("#metaText");
         this.metaExtraDetails = q<HTMLDetailsElement>("#metaExtraDetails");
+        this.songSelector = q<HTMLSelectElement>("#songSelector");
+        this.sampleSongs = q<HTMLElement>("#sampleSongs");
 
         const pianoRollCanvas = q<HTMLCanvasElement>("#pianoRollCanvas");
         this.pianoRollView = new PianoRollView(
@@ -126,6 +132,10 @@ class Application {
             void this.ensureAudio();
         });
         this.fileButton.addEventListener("change", (e) => this.onFileChange(e));
+        q<HTMLButtonElement>("#loadSongButton").addEventListener(
+            "click",
+            () => void this.onLoadSong(),
+        );
         this.playButton.addEventListener("click", () => this.onPlay());
         this.pauseButton.addEventListener("click", () => this.onPause());
         this.stopButton.addEventListener("click", () => this.onStop());
@@ -134,6 +144,44 @@ class Application {
 
         this.refreshButtons();
         this.tick();
+        void this.loadSongs();
+    }
+
+    private async loadSongs(): Promise<void> {
+        this.songDirectory = "./midi/";
+        const params = new URLSearchParams(location.search);
+        const dirRaw = params.get("dir");
+        if (dirRaw != null && /^[-0-9a-zA-Z_]+$/.test(dirRaw)) {
+            this.songDirectory = `./midi/${dirRaw}/`;
+        }
+        try {
+            const res = await fetch(this.songDirectory + "songs.json");
+            if (!res.ok) return;
+            this.songs = (await res.json()) as { name: string; artist?: string; file: string }[];
+            for (const song of this.songs) {
+                const option = document.createElement("option");
+                option.textContent =
+                    song.artist != null ? `${song.name} (${song.artist})` : song.name;
+                this.songSelector.appendChild(option);
+            }
+            if (this.songs.length > 0) this.sampleSongs.hidden = false;
+        } catch (e) {
+            console.error("failed to load songs.json", e);
+        }
+    }
+
+    private async onLoadSong(): Promise<void> {
+        const song = this.songs[this.songSelector.selectedIndex];
+        if (song == null) return;
+        void this.ensureAudio();
+        try {
+            const res = await fetch(this.songDirectory + song.file);
+            if (!res.ok) return;
+            const buffer = await res.arrayBuffer();
+            await this.loadBuffer(buffer);
+        } catch (e) {
+            console.error("failed to load song", e);
+        }
     }
 
     // Lazily create the audio graph. Always awaits resume() on return so the
@@ -216,16 +264,22 @@ class Application {
         e.preventDefault();
         const files = e.dataTransfer?.files;
         if (files == null || files.length === 0) return;
-        await this.loadFile(files[0]);
+        const buffer = await files[0].arrayBuffer();
+        await this.loadBuffer(buffer);
     }
 
     private async loadFile(file: File) {
         // Construct (and resume) the audio graph synchronously with the user
         // gesture. Awaiting before play() means the timer always anchors to a
         // running audio clock.
+        void this.ensureAudio();
+        const buffer = await file.arrayBuffer();
+        await this.loadBuffer(buffer);
+    }
+
+    private async loadBuffer(buffer: ArrayBuffer) {
         const { synth, player } = await this.ensureAudio();
 
-        const buffer = await file.arrayBuffer();
         synth.pause();
         // Await the worker: parse + analyze runs on the worker thread, then
         // the worker posts SongInfo back. Once load() resolves, both
