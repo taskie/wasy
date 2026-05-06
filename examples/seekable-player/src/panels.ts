@@ -8,26 +8,11 @@ type PanelConfig = {
 
 const PANEL_CONFIGS: PanelConfig[] = [
     { id: "panel-smf", label: "Load SMF", defaultX: 5, defaultY: 55, defaultVisible: true },
-    { id: "panel-mixer", label: "Mixer", defaultX: 710, defaultY: 55, defaultVisible: true },
     {
         id: "panel-transport",
         label: "Transport / Seek",
         defaultX: 5,
-        defaultY: 350,
-        defaultVisible: true,
-    },
-    {
-        id: "panel-channel-status",
-        label: "Channel Status",
-        defaultX: 5,
-        defaultY: 520,
-        defaultVisible: true,
-    },
-    {
-        id: "panel-analyser",
-        label: "Waveform / Spectrum",
-        defaultX: 5,
-        defaultY: 850,
+        defaultY: 310,
         defaultVisible: true,
     },
     {
@@ -38,12 +23,27 @@ const PANEL_CONFIGS: PanelConfig[] = [
         defaultVisible: true,
     },
     {
+        id: "panel-channel-status",
+        label: "Channel Status",
+        defaultX: 5,
+        defaultY: 510,
+        defaultVisible: true,
+    },
+    {
         id: "panel-keyboard",
         label: "Channel Notes",
         defaultX: 710,
-        defaultY: 520,
+        defaultY: 510,
         defaultVisible: true,
     },
+    {
+        id: "panel-analyser",
+        label: "Waveform / Spectrum",
+        defaultX: 5,
+        defaultY: 850,
+        defaultVisible: true,
+    },
+    { id: "panel-mixer", label: "Mixer", defaultX: 710, defaultY: 850, defaultVisible: true },
     {
         id: "panel-event-log",
         label: "Event Log",
@@ -69,7 +69,7 @@ const PANEL_CONFIGS: PanelConfig[] = [
         id: "panel-footnote",
         label: "About",
         defaultX: 710,
-        defaultY: 850,
+        defaultY: 980,
         defaultVisible: true,
     },
 ];
