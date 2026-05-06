@@ -52,6 +52,13 @@ const PANEL_CONFIGS: PanelConfig[] = [
         defaultVisible: false,
     },
     {
+        id: "panel-webmidi",
+        label: "Web MIDI",
+        defaultX: 80,
+        defaultY: 200,
+        defaultVisible: false,
+    },
+    {
         id: "panel-footnote",
         label: "About",
         defaultX: 710,

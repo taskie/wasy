@@ -466,3 +466,93 @@ code {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.webmidi-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.webmidi-status {
+    flex: 1;
+    font-size: 0.9em;
+}
+
+.webmidi-btn {
+    background: transparent;
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    padding: 3px 10px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.85em;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.webmidi-btn:hover:not(:disabled) {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+}
+
+.webmidi-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.webmidi-device-list {
+    margin: 0 0 6px 0;
+    padding: 0 0 0 1.2em;
+    font-size: 0.9em;
+    line-height: 1.6;
+}
+
+.webmidi-no-devices {
+    opacity: 0.6;
+}
+
+.webmidi-device-list li[data-state="disconnected"] {
+    opacity: 0.45;
+}
+
+.webmidi-pc {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border);
+}
+
+.webmidi-force-label,
+.webmidi-pc-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85em;
+}
+
+.webmidi-force-label input[type="checkbox"] {
+    accent-color: var(--color-accent);
+    cursor: pointer;
+    margin: 0;
+}
+
+.webmidi-force-label select,
+.webmidi-pc-label select {
+    background: var(--color-bg-alt);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font: inherit;
+    font-size: 1em;
+    cursor: pointer;
+}
+
+.webmidi-pc-prog-label select {
+    max-width: 200px;
+}

@@ -1,4 +1,12 @@
-import { SmfPlayer, SynthEngine, smfAnalyze, type SongInfo, type TimedEvent } from "wasy";
+import {
+    SmfPlayer,
+    SynthEngine,
+    smfAnalyze,
+    midiIn,
+    midi,
+    type SongInfo,
+    type TimedEvent,
+} from "wasy";
 import "./style.css";
 import { PianoRollView } from "./piano-roll-view.js";
 import { KeyboardView } from "./keyboard-view.js";
@@ -6,6 +14,7 @@ import { AnalyserView } from "./analyser-view.js";
 import { MixerView } from "./mixer-view.js";
 import { EventLogView } from "./event-log-view.js";
 import { ChannelStatusView } from "./channel-status-view.js";
+import { WebMidiView } from "./web-midi-view.js";
 import { initPanels } from "./panels.js";
 import { type ThemeMode, initTheme, setThemeMode, getCurrentMode } from "./theme.js";
 
@@ -57,6 +66,7 @@ class Application {
     private mixerView!: MixerView;
     private eventLogView!: EventLogView;
     private channelStatusView!: ChannelStatusView;
+    private webMidiView!: WebMidiView;
     private songSelector!: HTMLSelectElement;
     private sampleSongs!: HTMLElement;
     private songs: { name: string; artist?: string; file: string }[] = [];
@@ -141,6 +151,14 @@ class Application {
         this.stopButton.addEventListener("click", () => this.onStop());
         this.seekBar.addEventListener("input", () => this.onSeekInput());
         this.seekBar.addEventListener("change", () => this.onSeekCommit());
+
+        this.webMidiView = new WebMidiView(q<HTMLElement>("#webMidi"), {
+            onRequest: () => void this.ensureAudio(),
+        });
+        this.webMidiView.on((e) => this.onExternalMidiEvent(e));
+
+        const midiLinkInput = midiIn.createWebMidiLinkInput();
+        midiLinkInput.on((e) => this.onExternalMidiEvent(e));
 
         this.refreshButtons();
         this.tick();
@@ -252,6 +270,18 @@ class Application {
         this.keyboardView.onTimedEvent(e);
         this.eventLogView.onTimedEvent(e);
         this.channelStatusView.onTimedEvent(e);
+    }
+
+    private onExternalMidiEvent(e: midi.Event): void {
+        if (this.synth == null || this.audioContext == null) return;
+        const time = this.audioContext.currentTime;
+        this.synth.receiveEvent(e, time);
+        const timeStamp = this.player!.createTimeStamp();
+        timeStamp.currentTime = time;
+        const te: TimedEvent = { timeStamp, midiEvent: e };
+        this.keyboardView.onTimedEvent(te);
+        this.eventLogView.onTimedEvent(te);
+        this.channelStatusView.onTimedEvent(te);
     }
 
     private async onFileChange(e: Event) {

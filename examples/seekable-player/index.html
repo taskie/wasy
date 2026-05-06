@@ -147,6 +147,33 @@
             </p>
         </section>
 
+        <section id="panel-webmidi" class="partition">
+            <h2>Web MIDI</h2>
+            <div id="webMidi">
+                <div class="webmidi-row">
+                    <span class="webmidi-status"></span>
+                    <button class="webmidi-btn webmidi-request-btn" type="button">
+                        Request MIDI Access
+                    </button>
+                </div>
+                <ul class="webmidi-device-list"></ul>
+                <p class="hint">
+                    Web MIDI Link: active — receives <code>postMessage</code> from parent frames.
+                </p>
+                <div class="webmidi-pc">
+                    <label class="webmidi-force-label">
+                        <input type="checkbox" class="webmidi-force-chk" />
+                        Force ch
+                        <select class="webmidi-ch-sel"></select>
+                    </label>
+                    <label class="webmidi-pc-label webmidi-pc-prog-label"
+                        >Program
+                        <select class="webmidi-prog-sel"></select>
+                    </label>
+                </div>
+            </div>
+        </section>
+
         <section id="panel-footnote" class="partition footnote">
             <h2>About</h2>
             <dl class="meta">
