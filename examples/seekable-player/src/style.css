@@ -390,6 +390,19 @@ code {
     row-gap: 4px;
 }
 
+.mixer-channels-summary {
+    font-size: 0.85em;
+    opacity: 0.7;
+    cursor: pointer;
+    user-select: none;
+}
+
+.mixer-channel-rows {
+    display: grid;
+    row-gap: 4px;
+    margin-top: 4px;
+}
+
 .mixer-row {
     display: grid;
     grid-template-columns: 4ch max-content 1fr 5ch;

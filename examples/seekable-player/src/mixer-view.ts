@@ -96,9 +96,24 @@ export class MixerView {
         masterRow.appendChild(this.masterReadout);
         this.root.appendChild(masterRow);
 
+        const details = document.createElement("details");
+        details.className = "mixer-channels";
+        const summary = document.createElement("summary");
+        summary.className = "mixer-channels-summary";
+        summary.textContent = "Channels";
+        details.appendChild(summary);
+        const channelRows = document.createElement("div");
+        channelRows.className = "mixer-channel-rows";
         for (let ch = 0; ch < 16; ++ch) {
-            this.root.appendChild(this.renderChannelRow(ch));
+            channelRows.appendChild(this.renderChannelRow(ch));
         }
+        details.appendChild(channelRows);
+        const hint = document.createElement("p");
+        hint.className = "hint";
+        hint.textContent =
+            "S = solo (any active solo silences others), M = mute. Faders are independent of MIDI volume (CC 7 / 11).";
+        details.appendChild(hint);
+        this.root.appendChild(details);
     }
 
     private renderChannelRow(ch: number): HTMLElement {
