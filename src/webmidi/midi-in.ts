@@ -32,8 +32,14 @@ export const createWebMidiLinkInput = (): MidiInput => {
     window.addEventListener(
         "message",
         (event) => {
-            const elems: string[] = event.data.split(",");
-            if (elems[0] !== "midi") return;
+            const data = event.data;
+            if (typeof data !== "string") {
+                return;
+            }
+            const elems: string[] = data.split(",");
+            if (elems[0] !== "midi") {
+                return;
+            }
             const ints = elems.slice(1).map((x) => parseInt(x, 16));
             const bytes = new Uint8Array(ints);
             const dataView = new DataView(bytes.buffer);
