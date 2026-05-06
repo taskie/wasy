@@ -6,7 +6,7 @@
     "bugs": {
         "url": "https://github.com/taskie/wasy/issues"
     },
-    "license": "MIT",
+    "license": "MIT OR Apache-2.0",
     "author": "taskie",
     "repository": {
         "type": "git",
