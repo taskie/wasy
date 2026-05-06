@@ -29,8 +29,14 @@ src/
 │  └─ player-worker.ts    Player を別スレッドで動かす Web Worker (module worker)
 │
 ├─ synth/
-│  └─ patch.ts            Patch / Monophony 基底クラス (NoteOn/Off/Expired/PitchBend ライフサイクル)
-├─ synth.ts               Patch 具象実装 + DrumKitPatch + generatePatch
+│  ├─ patch.ts            Patch / Monophony 基底クラス (NoteOn/Off/Expired/PitchBend ライフサイクル)
+│  ├─ types.ts            ToneDefinition / DrumKitDefinition / Envelope 型 (JSON 定義のスキーマ)
+│  ├─ compile.ts          compileTone / compileDrumKit (定義 → Patch クラス階層へのコンパイル)
+│  ├─ generate-patch.ts   generatePatch: GM プログラム番号 → Patch (gmPatches / gmDrumKit を参照)
+│  └─ patches/
+│     ├─ gm.ts            gmPatches: ToneDefinition[128] (GM 128 melodic set)
+│     └─ gm-drum-kit.ts   gmDrumKit: DrumKitDefinition (Standard Drum Kit, key 35–81)
+├─ synth.ts               Patch 具象クラス群 (SimpleOscillatorPatch / NoisePatch / DrumKitPatch 等)
 │
 └─ webmidi/midi-in.ts     createWebMidiInput (Web MIDI API) / createWebMidiLinkInput (postMessage) → Signal<midi.Event>
 ```

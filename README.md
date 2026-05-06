@@ -65,14 +65,16 @@ npm test            # vitest run
 npm run build       # tsc → dist/
 ```
 
-There are two Vite-based example apps under `examples/`:
+There are three Vite-based example apps under `examples/`:
 
 - `examples/simple-player/` — SMF playback, drag-and-drop file load, Web MIDI input, keyboard / spectrum visualizer. Uses the `wasy.Wasy` façade.
-- `examples/seekable-player/` — wires `SmfPlayer` + `SynthEngine` directly without `Wasy`, exposing a tick-precise seek bar, scrolling piano roll, 16ch keyboard activity strip, waveform / spectrum tap, SMF metadata block (title / copyright / track names / markers / lyrics), and a 16-channel mixer with master / per-channel solo / mute / volume.
+- `examples/seekable-player/` — wires `SmfPlayer` + `SynthEngine` directly without `Wasy`, exposing a tick-precise seek bar, scrolling piano roll, 16ch keyboard activity strip, waveform / spectrum tap, SMF metadata block (title / copyright / track names / markers / lyrics), 16-channel mixer, event log, channel status strip, Web MIDI input, and a Solarized dark/light theme switcher.
+- `examples/patch-editor/` — interactive patch designer that uses `compileTone` / `compileDrumKit` from wasy. Edit oscillator / noise source, ADSR / ramp envelope, and drum-kit voice parameters through a form UI; audition in real time via mouse or Web MIDI input; copy the resulting JSON for use as a `ToneDefinition` / `DrumKitDefinition`.
 
 ```sh
 npm run -w examples/simple-player dev
 npm run -w examples/seekable-player dev
+npm run -w examples/patch-editor dev
 ```
 
 ## License
