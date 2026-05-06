@@ -52,7 +52,6 @@ class Application {
     private metaFormat!: HTMLElement;
     private metaTracks!: HTMLElement;
     private metaResolution!: HTMLElement;
-    private metaDuration!: HTMLElement;
     private metaTitle!: HTMLElement;
     private metaCopyright!: HTMLElement;
     private markerSeek!: HTMLElement;
@@ -87,7 +86,6 @@ class Application {
         this.metaFormat = q<HTMLElement>("#metaFormat");
         this.metaTracks = q<HTMLElement>("#metaTracks");
         this.metaResolution = q<HTMLElement>("#metaResolution");
-        this.metaDuration = q<HTMLElement>("#metaDuration");
         this.metaTitle = q<HTMLElement>("#metaTitle");
         this.metaCopyright = q<HTMLElement>("#metaCopyright");
         this.markerSeek = q<HTMLElement>("#markerSeek");
@@ -338,12 +336,6 @@ class Application {
         this.metaFormat.textContent = String(this.songInfo.format);
         this.metaTracks.textContent = String(this.songInfo.numberOfTracks);
         this.metaResolution.textContent = String(this.songInfo.resolution);
-        const totalSeconds = smfAnalyze.tickToSeconds(
-            this.songInfo.durationTicks,
-            this.songInfo.tempoMap,
-            this.songInfo.resolution,
-        );
-        this.metaDuration.textContent = `${smfAnalyze.formatTime(totalSeconds)} (${this.songInfo.durationTicks} tick)`;
         this.seekBar.max = String(this.songInfo.durationTicks);
         this.seekBar.value = "0";
         this.seekBar.disabled = false;

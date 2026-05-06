@@ -8,6 +8,7 @@ type PanelConfig = {
 
 const PANEL_CONFIGS: PanelConfig[] = [
     { id: "panel-smf", label: "Load SMF", defaultX: 5, defaultY: 55, defaultVisible: true },
+    { id: "panel-mixer", label: "Mixer", defaultX: 710, defaultY: 55, defaultVisible: true },
     {
         id: "panel-transport",
         label: "Transport / Seek",
@@ -43,7 +44,6 @@ const PANEL_CONFIGS: PanelConfig[] = [
         defaultY: 520,
         defaultVisible: true,
     },
-    { id: "panel-mixer", label: "Mixer", defaultX: 30, defaultY: 80, defaultVisible: false },
     {
         id: "panel-event-log",
         label: "Event Log",
