@@ -15,6 +15,7 @@ import { MixerView } from "./mixer-view.js";
 import { EventLogView } from "./event-log-view.js";
 import { ChannelStatusView } from "./channel-status-view.js";
 import { WebMidiView } from "./web-midi-view.js";
+import { TrackInfoView } from "./track-info-view.js";
 import { initPanels } from "./panels.js";
 import { type ThemeMode, initTheme, setThemeMode, getCurrentMode } from "./theme.js";
 
@@ -54,11 +55,9 @@ class Application {
     private metaDuration!: HTMLElement;
     private metaTitle!: HTMLElement;
     private metaCopyright!: HTMLElement;
-    private metaTrackNames!: HTMLElement;
-    private metaInstrumentNames!: HTMLElement;
-    private metaMarkers!: HTMLElement;
-    private metaText!: HTMLElement;
-    private metaExtraDetails!: HTMLDetailsElement;
+    private markerSeek!: HTMLElement;
+    private markerSelect!: HTMLSelectElement;
+    private trackInfoView!: TrackInfoView;
 
     private pianoRollView!: PianoRollView;
     private keyboardView!: KeyboardView;
@@ -91,11 +90,9 @@ class Application {
         this.metaDuration = q<HTMLElement>("#metaDuration");
         this.metaTitle = q<HTMLElement>("#metaTitle");
         this.metaCopyright = q<HTMLElement>("#metaCopyright");
-        this.metaTrackNames = q<HTMLElement>("#metaTrackNames");
-        this.metaInstrumentNames = q<HTMLElement>("#metaInstrumentNames");
-        this.metaMarkers = q<HTMLElement>("#metaMarkers");
-        this.metaText = q<HTMLElement>("#metaText");
-        this.metaExtraDetails = q<HTMLDetailsElement>("#metaExtraDetails");
+        this.markerSeek = q<HTMLElement>("#markerSeek");
+        this.markerSelect = q<HTMLSelectElement>("#markerSelect");
+        this.trackInfoView = new TrackInfoView(q<HTMLElement>("#trackInfo"));
         this.songSelector = q<HTMLSelectElement>("#songSelector");
         this.sampleSongs = q<HTMLElement>("#sampleSongs");
 
@@ -151,6 +148,7 @@ class Application {
         this.stopButton.addEventListener("click", () => this.onStop());
         this.seekBar.addEventListener("input", () => this.onSeekInput());
         this.seekBar.addEventListener("change", () => this.onSeekCommit());
+        this.markerSelect.addEventListener("change", () => this.onMarkerSelect());
 
         this.webMidiView = new WebMidiView(q<HTMLElement>("#webMidi"), {
             onRequest: () => void this.ensureAudio(),
@@ -270,6 +268,10 @@ class Application {
         this.keyboardView.onTimedEvent(e);
         this.eventLogView.onTimedEvent(e);
         this.channelStatusView.onTimedEvent(e);
+        this.trackInfoView.onTimedEvent(e);
+        if (e.midiEvent instanceof midi.MarkerMetaEvent) {
+            this.syncMarkerSelect(e.midiEvent.tick);
+        }
     }
 
     private onExternalMidiEvent(e: midi.Event): void {
@@ -349,23 +351,23 @@ class Application {
         const t = this.songInfo.metadata;
         this.metaTitle.textContent = t.title ?? "-";
         this.metaCopyright.textContent = t.copyright.length > 0 ? t.copyright.join(" / ") : "-";
-        this.metaTrackNames.textContent =
-            t.trackNames.length > 0
-                ? t.trackNames.map((x) => `#${x.trackIndex} ${x.name}`).join(", ")
-                : "-";
-        this.metaInstrumentNames.textContent =
-            t.instrumentNames.length > 0
-                ? t.instrumentNames.map((x) => `#${x.trackIndex} ${x.name}`).join(", ")
-                : "-";
-        this.metaMarkers.textContent =
-            t.markers.length > 0 ? t.markers.map((x) => `${x.tick}: ${x.text}`).join(", ") : "-";
-        this.metaText.textContent = t.text.length > 0 ? t.text.join(" / ") : "-";
-        const hasExtra =
-            t.trackNames.length > 0 ||
-            t.instrumentNames.length > 0 ||
-            t.markers.length > 0 ||
-            t.text.length > 0;
-        this.metaExtraDetails.hidden = !hasExtra;
+
+        while (this.markerSelect.options.length > 1) this.markerSelect.remove(1);
+        for (const m of t.markers) {
+            const opt = document.createElement("option");
+            const seconds = smfAnalyze.tickToSeconds(
+                m.tick,
+                this.songInfo!.tempoMap,
+                this.songInfo!.resolution,
+            );
+            opt.value = String(m.tick);
+            opt.textContent = `${smfAnalyze.formatTime(seconds)} (${m.tick} tick): ${m.text}`;
+            this.markerSelect.appendChild(opt);
+        }
+        this.syncMarkerSelect(0);
+        this.markerSeek.hidden = t.markers.length === 0;
+
+        this.trackInfoView.setSongInfo(this.songInfo);
     }
 
     private async onPlay() {
@@ -400,6 +402,8 @@ class Application {
         player.pause();
         synth.pause();
         this.keyboardView.clear();
+        this.trackInfoView.update(0);
+        this.syncMarkerSelect(0);
         this.seekBar.value = "0";
         this.refreshButtons();
     }
@@ -422,8 +426,30 @@ class Application {
         this.synth!.pause();
         this.player!.seek(tick);
         this.keyboardView.clear();
+        this.trackInfoView.update(tick);
+        this.syncMarkerSelect(tick);
         this.isUserSeeking = false;
         this.refreshButtons();
+    }
+
+    private onMarkerSelect() {
+        if (!this.hasBuffer || this.markerSelect.selectedIndex === 0) return;
+        const tick = Number(this.markerSelect.value);
+        this.synth!.pause();
+        this.player!.seek(tick);
+        this.keyboardView.clear();
+        this.trackInfoView.update(tick);
+        this.syncMarkerSelect(tick);
+        this.refreshButtons();
+    }
+
+    private syncMarkerSelect(tick: number): void {
+        let idx = 0;
+        for (let i = 1; i < this.markerSelect.options.length; i++) {
+            if (Number(this.markerSelect.options[i].value) <= tick) idx = i;
+            else break;
+        }
+        this.markerSelect.selectedIndex = idx;
     }
 
     private bpmAtTick(tick: number): number {

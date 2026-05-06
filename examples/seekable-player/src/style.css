@@ -279,6 +279,81 @@ dl.meta dd {
     opacity: 0.5;
 }
 
+.marker-seek {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.marker-seek[hidden] {
+    display: none;
+}
+
+.marker-seek-label {
+    font-size: 0.9em;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.track-info-section {
+    margin-top: 10px;
+}
+
+.track-info-section:first-child {
+    margin-top: 0;
+}
+
+.track-info-heading {
+    font-size: 0.85em;
+    opacity: 0.7;
+    margin-bottom: 3px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.track-info-section[open] > .track-info-heading {
+    margin-bottom: 4px;
+}
+
+.track-info-textarea {
+    display: block;
+    width: 100%;
+    resize: none;
+    box-sizing: border-box;
+    background: var(--color-bg-alt);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 4px 6px;
+    font: inherit;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.track-info-dynamic {
+    font-size: 0.9em;
+    padding: 3px 6px;
+    background: var(--color-bg-alt);
+    border-radius: 3px;
+    min-height: 1.4em;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.marker-seek-select {
+    flex: 1;
+    background: var(--color-bg-alt);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+    accent-color: var(--color-accent);
+}
+
 .hint {
     margin: 4px 0 0 0;
     opacity: 0.7;

@@ -37,19 +37,6 @@
                 <dt>Duration</dt>
                 <dd id="metaDuration">-</dd>
             </dl>
-            <details id="metaExtraDetails" hidden>
-                <summary>Track / Marker / Text</summary>
-                <dl class="meta">
-                    <dt>Track names</dt>
-                    <dd id="metaTrackNames">-</dd>
-                    <dt>Instrument names</dt>
-                    <dd id="metaInstrumentNames">-</dd>
-                    <dt>Markers</dt>
-                    <dd id="metaMarkers">-</dd>
-                    <dt>Text</dt>
-                    <dd id="metaText">-</dd>
-                </dl>
-            </details>
         </section>
 
         <section id="panel-transport" class="partition">
@@ -69,6 +56,12 @@
                 <output id="seekTimeReadout" for="seekBar">00:00 / 00:00</output>
                 <span class="seek-readout-sep">·</span>
                 <output id="seekBarBeatReadout" for="seekBar">1:1</output>
+            </div>
+            <div id="markerSeek" class="marker-seek" hidden>
+                <label class="marker-seek-label" for="markerSelect">Marker</label>
+                <select id="markerSelect" class="marker-seek-select">
+                    <option value="" disabled selected>Jump to marker…</option>
+                </select>
             </div>
         </section>
 
@@ -172,6 +165,11 @@
                     </label>
                 </div>
             </div>
+        </section>
+
+        <section id="panel-track-info" class="partition">
+            <h2>Track Info</h2>
+            <div id="trackInfo"></div>
         </section>
 
         <section id="panel-footnote" class="partition footnote">
