@@ -364,17 +364,38 @@ export const gmPatches: ToneDefinition[] = [
     {
         name: "Trumpet",
         source: { kind: "oscillator", oscillatorType: "square" },
-        envelope: { type: "adsr", attack: 0.01, decay: 0.05, sustain: 0.85, release: 0.1 },
+        envelope: {
+            type: "adsr",
+            attack: 0.01,
+            hold: 0.1,
+            decay: 0.05,
+            sustain: 0.85,
+            release: 0.1,
+        },
     },
     {
         name: "Trombone",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.02, decay: 0.05, sustain: 0.85, release: 0.1 },
+        envelope: {
+            type: "adsr",
+            attack: 0.02,
+            hold: 0.1,
+            decay: 0.05,
+            sustain: 0.85,
+            release: 0.1,
+        },
     },
     {
         name: "Tuba",
         source: { kind: "oscillator", oscillatorType: "triangle" },
-        envelope: { type: "adsr", attack: 0.02, decay: 0.05, sustain: 0.85, release: 0.1 },
+        envelope: {
+            type: "adsr",
+            attack: 0.02,
+            hold: 0.1,
+            decay: 0.05,
+            sustain: 0.85,
+            release: 0.1,
+        },
     },
     {
         name: "Muted Trumpet",
@@ -384,22 +405,36 @@ export const gmPatches: ToneDefinition[] = [
     {
         name: "French horn",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.05, decay: 0.05, sustain: 0.85, release: 0.15 },
+        envelope: {
+            type: "adsr",
+            attack: 0.05,
+            hold: 0.1,
+            decay: 0.05,
+            sustain: 0.85,
+            release: 0.15,
+        },
     },
     {
         name: "Brass Section",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.02, decay: 0.05, sustain: 0.85, release: 0.1 },
+        envelope: {
+            type: "adsr",
+            attack: 0.02,
+            hold: 0.2,
+            decay: 0.05,
+            sustain: 0.85,
+            release: 0.1,
+        },
     },
     {
         name: "Synth Brass 1",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.01, release: 0.08 },
+        envelope: { type: "adsr", attack: 0.01, hold: 0.1, release: 0.08 },
     },
     {
         name: "Synth Brass 2",
         source: { kind: "oscillator", oscillatorType: "sawtooth" },
-        envelope: { type: "adsr", attack: 0.02, release: 0.08 },
+        envelope: { type: "adsr", attack: 0.02, hold: 0.1, release: 0.08 },
     },
 
     // 64..71: Reed — square reads as nasal reed in chiptune; bassoon uses triangle.
@@ -533,8 +568,15 @@ export const gmPatches: ToneDefinition[] = [
     // level for the whole note.
     {
         name: "Pad 1 (Fantasia)",
-        source: { kind: "oscillator", oscillatorType: "triangle" },
-        envelope: { type: "adsr", attack: 0.5, fade: 8.0, release: 0.8 },
+        source: { kind: "oscillator", oscillatorType: "square" },
+        envelope: {
+            type: "adsr",
+            attack: 0.005,
+            decay: 0.1,
+            sustain: 0.5,
+            fade: 8.0,
+            release: 0.3,
+        },
     },
     {
         name: "Pad 2 (warm)",
@@ -575,11 +617,16 @@ export const gmPatches: ToneDefinition[] = [
 
     // 96..103: FX — atmospheric textures; FX 1 is a noise-based rain wash, FX 3 is a bell pluck.
     {
-        // Rain literally is filtered noise; tracking filter gives per-key
-        // timbre variation, fade lets the shower naturally subside.
         name: "FX 1 (rain)",
-        source: { kind: "noise" },
-        envelope: { type: "adsr", attack: 0.3, fade: 8.0, release: 0.5 },
+        source: { kind: "oscillator", oscillatorType: "square" },
+        envelope: {
+            type: "adsr",
+            attack: 0.001,
+            decay: 0.2,
+            sustain: 0.2,
+            fade: 8.0,
+            release: 0.5,
+        },
     },
     {
         name: "FX 2 (soundtrack)",
@@ -598,8 +645,15 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "FX 5 (brightness)",
-        source: { kind: "oscillator", oscillatorType: "sine" },
-        envelope: { type: "adsr", attack: 0.3, fade: 8.0, release: 0.6 },
+        source: { kind: "oscillator", oscillatorType: "square" },
+        envelope: {
+            type: "adsr",
+            attack: 0.005,
+            decay: 0.3,
+            sustain: 0.5,
+            fade: 8.0,
+            release: 0.5,
+        },
     },
     {
         name: "FX 6 (goblins)",
