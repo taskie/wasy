@@ -19,15 +19,16 @@ export class Timer {
     currentTime = 0;
     delayInSeconds: number;
     secondsPerBeat!: number;
+    speedFactor = 1;
 
     timerId: ReturnType<typeof setInterval> | null = null;
     _emitter: Signal<TimeStamp>;
 
     get ticksPerSecond() {
-        return this.resolution / this.secondsPerBeat;
+        return (this.resolution / this.secondsPerBeat) * this.speedFactor;
     }
     set ticksPerSecond(tps: number) {
-        this.secondsPerBeat = this.resolution / tps;
+        this.secondsPerBeat = (this.resolution * this.speedFactor) / tps;
     }
 
     get beatsPerMinute() {

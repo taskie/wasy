@@ -71,6 +71,8 @@ class Application {
     private songDirectory = "";
     private isUserSeeking = false;
     private hasBuffer = false;
+    private speedFactor = 1;
+    private speedButtons: NodeListOf<HTMLButtonElement> | null = null;
 
     start() {
         // Audio is deferred — see ensureAudio(). Only DOM/views are wired here.
@@ -147,6 +149,12 @@ class Application {
         this.seekBar.addEventListener("input", () => this.onSeekInput());
         this.seekBar.addEventListener("change", () => this.onSeekCommit());
         this.markerSelect.addEventListener("change", () => this.onMarkerSelect());
+
+        this.speedButtons = document.querySelectorAll<HTMLButtonElement>(".speed-btn");
+        for (const btn of this.speedButtons) {
+            btn.addEventListener("click", () => this.onSpeedButton(btn));
+        }
+        this.syncSpeedButtons();
 
         this.webMidiView = new WebMidiView(q<HTMLElement>("#webMidi"), {
             onRequest: () => void this.ensureAudio(),
@@ -327,6 +335,7 @@ class Application {
         this.channelStatusView.clear();
 
         this.hasBuffer = true;
+        player.timer.speedFactor = this.speedFactor;
         player.play();
         this.refreshButtons();
     }
@@ -422,6 +431,19 @@ class Application {
         this.syncMarkerSelect(tick);
         this.isUserSeeking = false;
         this.refreshButtons();
+    }
+
+    private onSpeedButton(btn: HTMLButtonElement) {
+        this.speedFactor = Number(btn.dataset.speed);
+        if (this.player != null) this.player.timer.speedFactor = this.speedFactor;
+        this.syncSpeedButtons();
+    }
+
+    private syncSpeedButtons() {
+        if (this.speedButtons == null) return;
+        for (const btn of this.speedButtons) {
+            btn.classList.toggle("active", Number(btn.dataset.speed) === this.speedFactor);
+        }
     }
 
     private onMarkerSelect() {
