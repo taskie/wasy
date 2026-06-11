@@ -142,7 +142,7 @@ text 系 Meta event は `MetaEvent.text(encoding?)` でデコードできる。`
 
 - `ControlChange` は以下を直接処理し、それ以外は `patch.receiveEvent` へ委譲:
     - `0/32` Bank Select MSB/LSB → `bankMSB`/`bankLSB` を保持 (次の ProgramChange で参照される)
-    - `7/10/11` Volume/Panpot/Expression
+    - `7/10/11` Volume/Panpot/Expression (volume / expression は GM2 カーブ `dB = 40·log10(v/127)` 相当の `(v/127)²` を掛け合わせる)
     - `1` Modulation Wheel → `setModulation(value, time)` (per-ch 5 Hz LFO depth、0..127 → 0..50 cents)
     - `71` Filter Resonance → `setFilterResonance(value, time)` (per-ch BiquadFilter Q を 0.5..12 で対数マッピング)
     - `74` Brightness / Filter Cutoff → `setFilterCutoff(value, time)` (per-ch BiquadFilter frequency を 750 Hz..16 kHz で指数マッピング)
@@ -152,14 +152,15 @@ text 系 Meta event は `MetaEvent.text(encoding?)` でデコードできる。`
     - `6/38` Data Entry MSB/LSB → `_dispatchDataEntry()` が `_lastParamType` を見て `receiveRPN` か `receiveNRPN` に振り分け
     - `98/99` NRPN LSB/MSB → `nrpn` を 14bit で構成、`_lastParamType = "nrpn"`
     - `100/101` RPN LSB/MSB → `rpn` を 14bit で構成、`_lastParamType = "rpn"`
-    - `120` AllSoundOff、`121` ResetAllControl (`applyReset(time)` 経由で全コントローラ状態 + audio param を GM デフォルトに ramp 復帰)
+    - `120` AllSoundOff (`notePool.unregisterAll(time)` — イベントの audio time で消音)
+    - `121` ResetAllControl → `applyResetAllControllers(time)`。RP-015 のスコープに従い modulation / expression / sustain (保留 NoteOff を dispatch して解放) / pitch bend / RPN・NRPN **選択**のみリセットし、volume / panpot / bank / sends / sound controllers / RPN **値** (bend range, fine/coarse tune) は保持する。全コントローラを GM デフォルトへ戻すフルリセットは GS/XG Reset 用の `applyReset(time)` のみ
 - RPN/NRPN 初期値は `0x3FFF` (null)。選択前の Data Entry は無視
-- Sustain Pedal が押下中 (`sustain === true`) の間、`NoteOff` は `_sustainedNoteOffs: Map<noteNumber, NoteOffEvent>` に保留され `patch.receiveEvent` には届かない。`NoteOn` が来たら同じ noteNumber の保留を破棄 (再打鍵が解放を上書き)。ペダル off で全保留 NoteOff を解放時刻で一括 dispatch。AllSoundOff / ResetAllControl / pause / destroy は dispatch せずクリア
+- Sustain Pedal が押下中 (`sustain === true`) の間、`NoteOff` は `_sustainedNoteOffs: Map<noteNumber, NoteOffEvent>` に保留され `patch.receiveEvent` には届かない。`NoteOn` が来たら同じ noteNumber の保留を破棄 (再打鍵が解放を上書き)。ペダル off で全保留 NoteOff を解放時刻で一括 dispatch。ResetAllControl (CC 121) と GS/XG Reset (`applyReset`) もペダル解放として保留分を dispatch してからクリアする (捨てるとスタックノートになる)。AllSoundOff / pause / destroy は発音自体を止めるので dispatch せずクリア
 - `ProgramChange` は外部に発火 → `SynthEngine` 側で `isDrumChannel(channel, instrument.bankMSB)` を再評価し、`generatePatch` で `instrument.patch` を差し替え。`isDrumChannel` は GM2 規約に従い、`bankMSB === 0x78` → drum / `0x79` → melody / それ以外は `channel === 9`
 - **Channel filter** (`_filter: BiquadFilterNode`): `_panner` と `_gain` の間に挟まる lowpass。既定は cutoff 12 kHz / Q=1 と near-bypass で、CC 74 (Brightness) と CC 71 (Resonance) に応じて `frequency` / `Q` が 8 ms ramp で変化する。1 ch につき 1 つしか持たないので polyphony が増えてもコストは一定
-- **Channel send buses** (`_reverbSend`, `_chorusSend`: `GainNode`): `SynthEngine` が `channelGains[ch]` の出力を `instrument.reverbSend` (および `chorusSend`) に `connect`、その出力を engine 側の `Reverb` / `Chorus` の入力に流す。CC 91 / 93 で send gain (0..1) を ramp 制御する。channelGain (= user-gain 層) の後段でタップしているため、mute / solo / fader と CC 7/11 の volume / expression が wet にも効く
+- **Channel send buses** (`_reverbSend`, `_chorusSend`: `GainNode`): `SynthEngine` が `channelGains[ch]` の出力を `instrument.reverbSend` (および `chorusSend`) に `connect`、その出力を engine 側の `Reverb` / `Chorus` の入力に流す。CC 91 / 93 で send gain (0..1) を ramp 制御する。既定値は GM2 に従い reverb 40/127、chorus 0。channelGain (= user-gain 層) の後段でタップしているため、mute / solo / fader と CC 7/11 の volume / expression が wet にも効く
 - **Channel modulation LFO** (`_modLfo: OscillatorNode` 5 Hz sine + `_modDepth: GainNode` cents): CC 1 で `_modDepth.gain` を 0..50 cents に ramp。`_modDepth` の出力は `attachChannelDetune` で `_detuneOffset` と並んで各ノートの `detune` AudioParam に `connect` され、AudioParam 入力で加算合成 (DC = pitch bend + tune、AC = vibrato)
-- **Channel detune bus** (`_detuneOffset: ConstantSourceNode`): pitch bend / fine tune (RPN 1) / coarse tune (RPN 2) を発音中ノートに即時反映するためのチャネル単位 DC バス。コンストラクタで `_detuneOffset.start()` され、`offset.value` (cents) は `pitchBend + fineTune + coarseTune × 100`。`PitchBendEvent` 受信および `receiveRPN` の RPN 0/1/2 ケース、`CC 121` ResetAllControl で `_updateDetuneOffset(time)` が呼ばれ、`cancelScheduledValues → setValueAtTime → linearRampToValueAtTime` の 8 ms ramp で `offset` を更新する (volume / panpot と同じ anti-zipper パターン)。各 `Patch` は NoteOn 時に `attachChannelDetune(monophony, source)` を呼び、`monophony.detunableNodes` (例: `oscillator` / `BiquadFilter`) の `detune` AudioParam に `_detuneOffset` を `connect` する。AudioParam は接続元の値を加算入力するため、ノード自身の `detune.value` は 0 のままバス側が pitch offset を運ぶ。`source.addEventListener("ended", ...)` で disconnect 後始末。`destroy()` で `_detuneOffset.stop()` + `disconnect()`
+- **Channel detune bus** (`_detuneOffset: ConstantSourceNode`): pitch bend / fine tune (RPN 1) / coarse tune (RPN 2) を発音中ノートに即時反映するためのチャネル単位 DC バス。コンストラクタで `_detuneOffset.start()` され、`offset.value` (cents) は `pitchBend + fineTune + coarseTune × 100`。`PitchBendEvent` 受信および `receiveRPN` の RPN 0/1/2 ケース、`CC 121` ResetAllControl で `_updateDetuneOffset(time)` が呼ばれ、`cancelAndHold → linearRampToValueAtTime` の 8 ms ramp で `offset` を更新する (volume / panpot と同じ anti-zipper パターン。`synth/audio-param.ts` 経由なのでスケジュール時刻の値にアンカーされる)。各 `Patch` は NoteOn 時に `attachChannelDetune(monophony, source)` を呼び、`monophony.detunableNodes` (例: `oscillator` / `BiquadFilter`) の `detune` AudioParam に `_detuneOffset` を `connect` する。AudioParam は接続元の値を加算入力するため、ノード自身の `detune.value` は 0 のままバス側が pitch offset を運ぶ。`source.addEventListener("ended", ...)` で disconnect 後始末。`destroy()` で `_detuneOffset.stop()` + `disconnect()`
 - `Patch.receiveEvent` は `NoteOn → onNoteOn → registerNote`、`NoteOff → onNoteOff` をディスパッチ。`PitchBend` は `Instrument` 側で吸収され、後述の channel detune bus を経由するため `Patch` には届かない
 - `NotePool.register` は同一 noteNumber の上書き時と polyphony 超過時に `expired` を発火 → `Wasy` 経由で `parentPatch.onExpired` を呼びノードを破棄
 
@@ -184,7 +185,7 @@ instrument._panner (StereoPannerNode, pan = (panpot - 64) / 64)
 instrument._filter (BiquadFilter lowpass — MIDI CC 74 cutoff / CC 71 Q)
    │
    ▼
-instrument._gain (volume × expression — MIDI CC 7 / 11 由来)
+instrument._gain ((volume/127)² × (expression/127)² — MIDI CC 7 / 11 由来、GM2 カーブ)
    │
    ▼
 SynthEngine.channelGains[ch] (per-ch user-gain bus, 既定 1.0)

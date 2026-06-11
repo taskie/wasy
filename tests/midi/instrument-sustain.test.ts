@@ -121,17 +121,22 @@ describe("Instrument sustain pedal (CC 64)", () => {
         expect(offs).toHaveLength(0);
     });
 
-    it("ResetAllControl (CC 121) clears sustain state and pending NoteOffs", () => {
+    it("ResetAllControl (CC 121) releases pedal-held notes instead of dropping them", () => {
         const { inst, patch } = makeInstrument();
         inst.receiveEvent(cc(0, 64, 127), 0);
         inst.receiveEvent(noteOn(0, 60, 100), 1);
         inst.receiveEvent(noteOff(0, 60), 2);
         inst.receiveEvent(cc(0, 121, 0), 3);
         expect(inst.sustain).toBe(false);
-        // Pedal already off after reset; no deferred NoteOff should remain.
-        inst.receiveEvent(cc(0, 64, 0), 4);
+        // RP-015: resetting sustain acts as a pedal release — the deferred
+        // NoteOff must be dispatched (at the reset time), not discarded,
+        // or the note would be stuck on.
         const offs = patch.received.filter((r) => r.event instanceof NoteOffEvent);
-        expect(offs).toHaveLength(0);
+        expect(offs).toHaveLength(1);
+        expect(offs[0].time).toBe(3);
+        // Nothing left pending for a later pedal-off to re-dispatch.
+        inst.receiveEvent(cc(0, 64, 0), 4);
+        expect(patch.received.filter((r) => r.event instanceof NoteOffEvent)).toHaveLength(1);
     });
 });
 
@@ -158,10 +163,24 @@ describe("Instrument.applyReset", () => {
         expect(inst.modulationValue).toBe(0);
         expect(inst.filterCutoff).toBe(64);
         expect(inst.filterResonance).toBe(64);
-        expect(inst.reverbSendValue).toBe(0);
+        // GM2 default Reverb Send Level is 40, chorus 0.
+        expect(inst.reverbSendValue).toBe(40);
         expect(inst.chorusSendValue).toBe(0);
         expect(inst.sustain).toBe(false);
         expect(inst.bankMSB).toBe(0);
         expect(inst.bankLSB).toBe(0);
+    });
+
+    it("dispatches pedal-held NoteOffs before wiping state (no stuck notes)", () => {
+        const { inst, patch } = makeInstrument();
+        inst.receiveEvent(cc(0, 64, 127), 0);
+        inst.receiveEvent(noteOn(0, 60, 100), 1);
+        inst.receiveEvent(noteOff(0, 60), 2);
+
+        inst.applyReset(3);
+
+        const offs = patch.received.filter((r) => r.event instanceof NoteOffEvent);
+        expect(offs).toHaveLength(1);
+        expect(offs[0].time).toBe(3);
     });
 });

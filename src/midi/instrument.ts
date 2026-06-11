@@ -154,7 +154,7 @@ export class Instrument<T> {
     // CC 71 — Filter Resonance. 0..127, 64 = neutral.
     // Mapped to BiquadFilter Q in [0.5, 12] (logarithmic around 1).
     filterResonance!: number;
-    // CC 91 — Reverb Send. 0..127, default 0 (dry only).
+    // CC 91 — Reverb Send. 0..127, default 40 (the GM2-specified default).
     reverbSendValue!: number;
     // CC 93 — Chorus Send. 0..127, default 0 (dry only).
     chorusSendValue!: number;
@@ -201,7 +201,9 @@ export class Instrument<T> {
         // into these on construction and routes their output into the
         // engine-level effect buses. We just expose them and own the gain.
         this._reverbSend = this.audioContext.createGain();
-        this._reverbSend.gain.value = 0;
+        // GM2 default Reverb Send Level is 40 (chorus stays 0); keep the
+        // node in sync with the `reverbSendValue = 40` state default.
+        this._reverbSend.gain.value = 40 / 127;
         this._chorusSend = this.audioContext.createGain();
         this._chorusSend.gain.value = 0;
 
@@ -226,6 +228,10 @@ export class Instrument<T> {
         this._modLfo.start();
 
         this.resetAllControl();
+        // Align the gain node with the GM default state (volume 100 /
+        // expression 127) so a channel that never receives CC 7 / CC 11
+        // plays at the spec-default level rather than the node's raw 1.0.
+        this._gain.gain.value = this._channelGain();
     }
 
     get detuneOffset(): ConstantSourceNode {
@@ -251,6 +257,10 @@ export class Instrument<T> {
     // Reset SysEx — `resetAllControl()` alone only updates the state
     // fields, leaving previously-set audio params unchanged.
     applyReset(time: number) {
+        // Dispatch pedal-held NoteOffs before wiping state — clearing the
+        // deferred map without dispatching would leave those notes stuck
+        // on (they would never receive their NoteOff).
+        this.setSustain(0, time);
         this.resetAllControl();
         this._updateDetuneOffset(time);
         this.setVolume(this.volume, time);
@@ -261,6 +271,27 @@ export class Instrument<T> {
         this.setFilterResonance(this.filterResonance, time);
         this.setReverbSend(this.reverbSendValue, time);
         this.setChorusSend(this.chorusSendValue, time);
+    }
+
+    // RP-015 "Response to Reset All Controllers" — the scope GM1 / GM2
+    // mandate for CC 121. Resets only the performance controllers:
+    // modulation, expression, sustain (releasing pedal-held notes at
+    // `time`), pitch bend, and the RPN / NRPN parameter *selection*.
+    // Volume / panpot / bank select / effect sends / sound controllers
+    // and the RPN *values* (pitch bend range, fine / coarse tune) are
+    // deliberately left untouched — wiping those is GS / XG System On
+    // territory (`applyReset`); doing it on a mid-song CC 121 would
+    // audibly destroy the mix.
+    applyResetAllControllers(time: number) {
+        this.setSustain(0, time);
+        this.setModulation(0, time);
+        this.setExpression(127, time);
+        this.pitchBend = 0;
+        this._updateDetuneOffset(time);
+        this.dataEntry = 0;
+        this.rpn = 0x3fff; // null RPN
+        this.nrpn = 0x3fff; // null NRPN
+        this._lastParamType = "rpn";
     }
 
     resetAllControl() {
@@ -279,7 +310,8 @@ export class Instrument<T> {
         this.modulationValue = 0;
         this.filterCutoff = 64;
         this.filterResonance = 64;
-        this.reverbSendValue = 0;
+        // GM2 default Reverb Send Level is 40 (0x28); Chorus stays 0.
+        this.reverbSendValue = 40;
         this.chorusSendValue = 0;
 
         this.sustain = false;
@@ -327,12 +359,22 @@ export class Instrument<T> {
 
     setVolume(volume: number, time: number) {
         this.volume = volume;
-        this._rampGain(((volume / 127) * this.expression) / 127, time);
+        this._rampGain(this._channelGain(), time);
     }
 
     setExpression(expression: number, time: number) {
         this.expression = expression;
-        this._rampGain(((this.volume / 127) * expression) / 127, time);
+        this._rampGain(this._channelGain(), time);
+    }
+
+    // GM2 volume / expression response curve: dB = 40·log10(v/127), i.e.
+    // gain = (v/127)² per controller. The previous linear v/127 made CC 7
+    // / CC 11 inconsistent with the squared velocity curve (see synth.ts)
+    // and compressed the usable dynamic range.
+    private _channelGain() {
+        const v = this.volume / 127;
+        const e = this.expression / 127;
+        return v * v * e * e;
     }
 
     private _rampGain(target: number, time: number) {
@@ -509,11 +551,14 @@ export class Instrument<T> {
                     this._lastParamType = "rpn";
                     break;
                 case 120: // AllSoundOff
-                    this.notePool.unregisterAll();
+                    // Silence at the event's scheduled audio time, not at
+                    // dispatch time (which runs ~200 ms early under the
+                    // player's lookahead).
+                    this.notePool.unregisterAll(time);
                     this._sustainedNoteOffs.clear();
                     break;
-                case 121: // ResetAllControl
-                    this.applyReset(time);
+                case 121: // ResetAllControl (RP-015 scope — not a full GM reset)
+                    this.applyResetAllControllers(time);
                     break;
                 default:
                     if (this.patch) {
