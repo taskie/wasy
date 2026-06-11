@@ -12,7 +12,7 @@ const PANEL_CONFIGS: PanelConfig[] = [
         id: "panel-transport",
         label: "Transport / Seek",
         defaultX: 5,
-        defaultY: 310,
+        defaultY: 330,
         defaultVisible: true,
     },
     {
@@ -26,14 +26,14 @@ const PANEL_CONFIGS: PanelConfig[] = [
         id: "panel-channel-status",
         label: "Channel Status",
         defaultX: 5,
-        defaultY: 510,
+        defaultY: 520,
         defaultVisible: true,
     },
     {
         id: "panel-keyboard",
         label: "Channel Notes",
         defaultX: 710,
-        defaultY: 510,
+        defaultY: 520,
         defaultVisible: true,
     },
     {

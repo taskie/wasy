@@ -186,7 +186,6 @@ class Application {
                     song.artist != null ? `${song.name} (${song.artist})` : song.name;
                 this.songSelector.appendChild(option);
             }
-            if (this.songs.length > 0) this.sampleSongs.hidden = false;
         } catch (e) {
             console.error("failed to load songs.json", e);
         }
@@ -366,7 +365,6 @@ class Application {
             this.markerSelect.appendChild(opt);
         }
         this.syncMarkerSelect(0);
-        this.markerSeek.hidden = t.markers.length === 0;
 
         this.trackInfoView.setSongInfo(this.songInfo);
     }
