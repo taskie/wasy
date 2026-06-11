@@ -1,6 +1,12 @@
 import * as midi from "./midi/event.js";
 import * as inst from "./midi/instrument.js";
 import { Monophony, Patch } from "./synth/patch.js";
+import {
+    cancelAndHold,
+    cancelScheduled,
+    scheduleLinearRamp,
+    scheduleValueAtTime,
+} from "./synth/audio-param.js";
 
 // Squared velocity → gain mapping. The MIDI spec leaves the curve
 // implementation-defined, but DLS Level 1 / GM convention (and most
@@ -164,9 +170,9 @@ export class GainedNoisePatch extends NoisePatch {
         // the parent's applyAttack schedules events at audio `time`, so the
         // param's live `.value` (at currentTime) is still 0 here.
         const baseGain = velocityToGain(event.velocity);
-        gain.gain.cancelScheduledValues(time);
-        gain.gain.setValueAtTime(this.valueAtBegin * baseGain, time);
-        gain.gain.linearRampToValueAtTime(this.valueAtEnd * baseGain, time + this.duration);
+        cancelScheduled(gain.gain, time);
+        scheduleValueAtTime(gain.gain, this.valueAtBegin * baseGain, time);
+        scheduleLinearRamp(gain.gain, this.valueAtEnd * baseGain, time + this.duration);
         return monophony;
     }
 }
@@ -181,13 +187,8 @@ export class OneShotNoisePatch extends GainedNoisePatch {
         // lookahead window — that would make long-decay percussion
         // (e.g. Crash 1) audibly swell right before the next hit.
         const gainParam = monophony.gain.gain;
-        if (typeof gainParam.cancelAndHoldAtTime === "function") {
-            gainParam.cancelAndHoldAtTime(time);
-        } else {
-            gainParam.cancelScheduledValues(time);
-            gainParam.setValueAtTime(gainParam.value, time);
-        }
-        gainParam.linearRampToValueAtTime(0, time + 0.005);
+        cancelAndHold(gainParam, time);
+        scheduleLinearRamp(gainParam, 0, time + 0.005);
         monophony.source.stop(time + 0.005);
     }
 }
@@ -211,9 +212,9 @@ export class GainedOscillatorPatch extends SimpleOscillatorPatch {
         // the parent's applyAttack schedules events at audio `time`, so the
         // param's live `.value` (at currentTime) is still 0 here.
         const baseGain = velocityToGain(event.velocity);
-        gain.gain.cancelScheduledValues(time);
-        gain.gain.setValueAtTime(this.valueAtBegin * baseGain, time);
-        gain.gain.linearRampToValueAtTime(this.valueAtEnd * baseGain, time + this.duration);
+        cancelScheduled(gain.gain, time);
+        scheduleValueAtTime(gain.gain, this.valueAtBegin * baseGain, time);
+        scheduleLinearRamp(gain.gain, this.valueAtEnd * baseGain, time + this.duration);
         return monophony;
     }
 }
@@ -252,13 +253,8 @@ export class OneShotOscillatorPatch extends GainedOscillatorPatch {
         // See OneShotNoisePatch.onExpired for the rationale; same lookahead
         // hazard applies to oscillator-driven one-shot drums.
         const gainParam = monophony.gain.gain;
-        if (typeof gainParam.cancelAndHoldAtTime === "function") {
-            gainParam.cancelAndHoldAtTime(time);
-        } else {
-            gainParam.cancelScheduledValues(time);
-            gainParam.setValueAtTime(gainParam.value, time);
-        }
-        gainParam.linearRampToValueAtTime(0, time + 0.005);
+        cancelAndHold(gainParam, time);
+        scheduleLinearRamp(gainParam, 0, time + 0.005);
         monophony.oscillator.stop(time + 0.005);
     }
 }

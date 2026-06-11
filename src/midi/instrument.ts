@@ -1,5 +1,6 @@
 import * as midi from "./event.js";
 import { createSignal, type Signal } from "../signal.js";
+import { cancelAndHold, scheduleLinearRamp } from "../synth/audio-param.js";
 
 export interface ExpiredMessage<T> {
     data: T;
@@ -321,11 +322,7 @@ export class Instrument<T> {
     setPanpot(panpot: number, time: number) {
         this.panpot = panpot;
         // MIDI panpot 0-127 → StereoPanner pan -1..+1 (centered at 64).
-        const target = (panpot - 64) / 64;
-        const param = this._panner.pan;
-        param.cancelScheduledValues(time);
-        param.setValueAtTime(param.value, time);
-        param.linearRampToValueAtTime(target, time + SMOOTHING_TIME);
+        this._rampParam(this._panner.pan, (panpot - 64) / 64, time);
     }
 
     setVolume(volume: number, time: number) {
@@ -339,10 +336,7 @@ export class Instrument<T> {
     }
 
     private _rampGain(target: number, time: number) {
-        const param = this._gain.gain;
-        param.cancelScheduledValues(time);
-        param.setValueAtTime(param.value, time);
-        param.linearRampToValueAtTime(target, time + SMOOTHING_TIME);
+        this._rampParam(this._gain.gain, target, time);
     }
 
     // Push the current total detune (in cents) onto `_detuneOffset.offset`
@@ -351,16 +345,16 @@ export class Instrument<T> {
     // real time — pitch bend and RPN tuning changes no longer need to
     // walk the NotePool.
     private _updateDetuneOffset(time: number) {
-        const param = this._detuneOffset.offset;
-        param.cancelScheduledValues(time);
-        param.setValueAtTime(param.value, time);
-        param.linearRampToValueAtTime(this.detune, time + SMOOTHING_TIME);
+        this._rampParam(this._detuneOffset.offset, this.detune, time);
     }
 
+    // `cancelAndHold` anchors the ramp at the param's scheduled value at
+    // `time` rather than `param.value` (the value at `currentTime`), so
+    // back-to-back CC changes inside the player's lookahead window chain
+    // correctly instead of restarting from a stale value.
     private _rampParam(param: AudioParam, target: number, time: number) {
-        param.cancelScheduledValues(time);
-        param.setValueAtTime(param.value, time);
-        param.linearRampToValueAtTime(target, time + SMOOTHING_TIME);
+        cancelAndHold(param, time);
+        scheduleLinearRamp(param, target, time + SMOOTHING_TIME);
     }
 
     setModulation(value: number, time: number) {
