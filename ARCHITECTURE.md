@@ -30,6 +30,7 @@ src/
 │
 ├─ synth/
 │  ├─ patch.ts            Patch / Monophony 基底クラス (NoteOn/Off/Expired/PitchBend ライフサイクル)
+│  ├─ audio-param.ts      AudioParam スケジューリングヘルパ (cancelAndHoldAtTime 互換レイヤ + Firefox 向けシャドウトラッキング)
 │  ├─ types.ts            ToneDefinition / DrumKitDefinition / Envelope 型 (JSON 定義のスキーマ)
 │  ├─ compile.ts          compileTone / compileDrumKit (定義 → Patch クラス階層へのコンパイル)
 │  ├─ generate-patch.ts   generatePatch: GM プログラム番号 → Patch (gmPatches / gmDrumKit を参照)
@@ -64,7 +65,7 @@ Wasy (façade)
 
 `SynthEngine.receiveEvent` は `ChannelEvent` をその channel の `Instrument` に送り、`SystemExclusiveEvent` のうち GS Reset (`F0 41 10 42 12 40 00 7F 00 41 F7`) / XG System On (`F0 43 10 4C 00 00 7E 00 F7`) を `matchSysEx` で検出して全 Instrument に `applyReset(time)` を呼ぶ (engine 側で 1 度だけ判定するため、Worker による 16 ch 複製で 16 倍の reset が走らない)。それ以外の SysEx / MetaEvent は従来どおり全 Instrument に broadcast。`matchSysEx` は SMF (`[varlen-length, ...body]`) と Web MIDI (`[...body]`) の両形式を offset 0 と 1 で試して受け入れる。
 
-`Patch` 基底クラスは ADSR エンベロープ (`attackTime` / `decayTime` / `sustainLevel` / `releaseTime`、既定 5 ms / 0 / 1 / 50 ms) と `applyAttack(gainParam, peakGain, time)` / `applyRelease(gainParam, time)` ヘルパを持つ。`SimpleOscillatorPatch` / `NoisePatch` の `onNoteOn` は `applyAttack`、`onNoteOff` は `applyRelease` + `oscillator.stop(time + releaseTime)` の順で release tail を残してから止める。`applyRelease` は `cancelAndHoldAtTime(time)` でリリース開始値を予約 NoteOff 時点で固定する (フォールバックは `setValueAtTime(.value, time)`)。`GainedOscillatorPatch` / `GainedNoisePatch` 系 (ピアノ系の減衰 envelope と打楽器 one-shot) は自前の gain ramp を `cancelScheduledValues(time)` で重ねる方式を維持し、`baseGain` は `velocityToGain(event.velocity)` から直接計算する (基底の `applyAttack` が future schedule を組むため `.value` 読みは default 0 を返す)。
+`Patch` 基底クラスは ADSR エンベロープ (`attackTime` / `decayTime` / `sustainLevel` / `releaseTime`、既定 5 ms / 0 / 1 / 50 ms) と `applyAttack(gainParam, peakGain, time)` / `applyRelease(gainParam, time)` ヘルパを持つ。`SimpleOscillatorPatch` / `NoisePatch` の `onNoteOn` は `applyAttack`、`onNoteOff` は `applyRelease` + `oscillator.stop(time + releaseTime)` の順で release tail を残してから止める。`applyRelease` は `synth/audio-param.ts` の `cancelAndHold(param, time)` でリリース開始値を予約 NoteOff 時点で固定する。`cancelAndHoldAtTime` 未実装ブラウザ (Firefox, Bugzilla 1308431) 向けには、同モジュールの `scheduleValueAtTime` / `scheduleLinearRamp` / `cancelScheduled` 経由でスケジュールしたイベントを `WeakMap` のシャドウリストに記録しておき、`cancelAndHold` が `time` 時点の値を線形補間で計算して `cancelScheduledValues + setValueAtTime` でアンカーする (旧フォールバックの `setValueAtTime(.value, time)` は `currentTime` 時点の値を使うため、~200 ms 先読みと組み合わさると attack 前の 0 にアンカーして短いノートが無音になった)。ネイティブ対応パラメータではトラッキング自体をスキップする。`GainedOscillatorPatch` / `GainedNoisePatch` 系 (ピアノ系の減衰 envelope と打楽器 one-shot) は自前の gain ramp を `cancelScheduled(time)` で重ねる方式を維持し、`baseGain` は `velocityToGain(event.velocity)` から直接計算する (基底の `applyAttack` が future schedule を組むため `.value` 読みは default 0 を返す)。
 
 `Patch` の継承:
 

@@ -14,7 +14,7 @@ type ParamCall =
     | { kind: "cancelScheduledValues"; time: number }
     | { kind: "cancelAndHoldAtTime"; time: number };
 
-const recordingParam = (initial = 0) => {
+const recordingParam = (initial = 0, withCancelAndHold = true) => {
     const calls: ParamCall[] = [];
     const param = {
         value: initial,
@@ -28,13 +28,16 @@ const recordingParam = (initial = 0) => {
         cancelScheduledValues(time: number) {
             calls.push({ kind: "cancelScheduledValues", time });
         },
-        cancelAndHoldAtTime(time: number) {
-            calls.push({ kind: "cancelAndHoldAtTime", time });
-        },
         connect() {},
         disconnect() {},
     };
-    return param;
+    if (!withCancelAndHold) return param;
+    return {
+        ...param,
+        cancelAndHoldAtTime(time: number) {
+            calls.push({ kind: "cancelAndHoldAtTime", time });
+        },
+    };
 };
 
 const makeNode = (extras: Record<string, unknown> = {}) => ({
@@ -45,12 +48,14 @@ const makeNode = (extras: Record<string, unknown> = {}) => ({
     ...extras,
 });
 
-const makeAudioContext = () => {
+// `withCancelAndHold = false` simulates Firefox, where AudioParam lacks
+// `cancelAndHoldAtTime` and the shadow-tracking fallback must kick in.
+const makeAudioContext = (withCancelAndHold = true) => {
     const ctx = {
         currentTime: 0,
         sampleRate: 44100,
         createStereoPanner: () => makeNode({ pan: recordingParam() }),
-        createGain: () => makeNode({ gain: recordingParam() }),
+        createGain: () => makeNode({ gain: recordingParam(0, withCancelAndHold) }),
         createConstantSource: () => makeNode({ offset: recordingParam(), start() {}, stop() {} }),
         createBiquadFilter: () =>
             makeNode({
@@ -132,6 +137,29 @@ describe("OneShotNoisePatch.onExpired", () => {
     });
 });
 
+describe("OneShotNoisePatch.onExpired without cancelAndHoldAtTime (Firefox fallback)", () => {
+    it("holds at the interpolated decay value at the expire time", () => {
+        const ctx = makeAudioContext(false);
+        const inst = new Instrument<NoiseMonophony>(ctx, makeNode() as AudioNode);
+        const patch = new OneShotNoisePatch(inst, 1, 0, 1.5, 8000, makeNode() as AudioNode);
+
+        const mono = patch.onNoteOn(noteOn(49, 100), 0);
+        const gainCalls = (mono.gain.gain as unknown as { calls: ParamCall[] }).calls;
+        const beforeExpire = gainCalls.length;
+
+        patch.onExpired(mono, 0.1);
+
+        const newCalls = gainCalls.slice(beforeExpire);
+        const hold = newCalls.find((c) => c.kind === "setValueAtTime" && c.time === 0.1);
+        expect(hold).toBeDefined();
+        // The decay ramp runs baseGain → 0 over 1.5 s; at 0.1 s the shadow
+        // tracker must compute the interpolated value — not the param's
+        // live `.value` (0 here), which is what the old fallback anchored to.
+        const baseGain = (100 / 127) ** 2;
+        expect((hold as { value: number }).value).toBeCloseTo(baseGain * (1 - 0.1 / 1.5));
+    });
+});
+
 describe("OneShotOscillatorPatch.onExpired", () => {
     it("anchors the in-flight decay ramp at `time` instead of cancelling to 0", () => {
         const ctx = makeAudioContext();
@@ -163,5 +191,26 @@ describe("OneShotOscillatorPatch.onExpired", () => {
                 c.time <= 0.1 + 0.01,
         );
         expect(ramp).toBeDefined();
+    });
+});
+
+describe("OneShotOscillatorPatch.onExpired without cancelAndHoldAtTime (Firefox fallback)", () => {
+    it("holds at the interpolated decay value at the expire time", () => {
+        const ctx = makeAudioContext(false);
+        const inst = new Instrument<SimpleOscillatorMonophony>(ctx, makeNode() as AudioNode);
+        const patch = new OneShotOscillatorPatch(inst, 0.2, 150, "square", makeNode() as AudioNode);
+
+        const mono = patch.onNoteOn(noteOn(36, 100), 0);
+        const gainCalls = (mono.gain.gain as unknown as { calls: ParamCall[] }).calls;
+        const beforeExpire = gainCalls.length;
+
+        patch.onExpired(mono, 0.1);
+
+        const newCalls = gainCalls.slice(beforeExpire);
+        const hold = newCalls.find((c) => c.kind === "setValueAtTime" && c.time === 0.1);
+        expect(hold).toBeDefined();
+        // Decay runs baseGain → 0 over 0.2 s; at 0.1 s we are halfway down.
+        const baseGain = (100 / 127) ** 2;
+        expect((hold as { value: number }).value).toBeCloseTo(baseGain * 0.5);
     });
 });

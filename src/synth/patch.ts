@@ -1,6 +1,12 @@
 import * as midi from "../midi/event.js";
 import * as tuning from "../player/tuning.js";
 import * as inst from "../midi/instrument.js";
+import {
+    cancelAndHold,
+    cancelScheduled,
+    scheduleLinearRamp,
+    scheduleValueAtTime,
+} from "./audio-param.js";
 
 export class Monophony {
     parentPatch!: Patch<Monophony>;
@@ -57,46 +63,43 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
     // event at `time`, so a subsequent `applyRelease(time')` (with
     // `time' > time`) sees a defined value to hold.
     protected applyAttack(gainParam: AudioParam, peakGain: number, time: number) {
-        gainParam.cancelScheduledValues(time);
+        cancelScheduled(gainParam, time);
         if (this.attackTime > 0) {
-            gainParam.setValueAtTime(0, time);
-            gainParam.linearRampToValueAtTime(peakGain, time + this.attackTime);
+            scheduleValueAtTime(gainParam, 0, time);
+            scheduleLinearRamp(gainParam, peakGain, time + this.attackTime);
         } else {
-            gainParam.setValueAtTime(peakGain, time);
+            scheduleValueAtTime(gainParam, peakGain, time);
         }
         let phaseEnd = time + this.attackTime;
         if (this.holdTime > 0) {
             // Anchor peak at the end of hold so the next ramp starts from peak.
             phaseEnd += this.holdTime;
-            gainParam.setValueAtTime(peakGain, phaseEnd);
+            scheduleValueAtTime(gainParam, peakGain, phaseEnd);
         }
         const sustainGain = peakGain * this.sustainLevel;
         if (this.decayTime > 0 && this.sustainLevel < 1) {
             phaseEnd += this.decayTime;
-            gainParam.linearRampToValueAtTime(sustainGain, phaseEnd);
+            scheduleLinearRamp(gainParam, sustainGain, phaseEnd);
         }
         if (this.fadeTime > 0 && sustainGain > 0) {
             // Linear fade from the (possibly already decayed) sustain level
             // down to 0 over `fadeTime`. NoteOff still triggers
             // applyRelease normally; fade only affects the held-key region.
-            gainParam.linearRampToValueAtTime(0, phaseEnd + this.fadeTime);
+            scheduleLinearRamp(gainParam, 0, phaseEnd + this.fadeTime);
         }
     }
 
     // Schedule release: ramp from whatever value is on the param at audio
-    // time `time` down to 0 over `releaseTime`. We use `cancelAndHoldAtTime`
-    // so the start of the ramp is the envelope's value at `time` (which
-    // may be mid-attack or mid-decay) — not `gainParam.value`, which
-    // reflects the value at `currentTime` and would diverge from `time`
-    // when the player schedules NoteOff with the ~200 ms lookahead.
+    // time `time` down to 0 over `releaseTime`. `cancelAndHold` anchors the
+    // ramp at the envelope's value at `time` (which may be mid-attack or
+    // mid-decay) — not `gainParam.value`, which reflects the value at
+    // `currentTime` and would diverge from `time` when the player schedules
+    // NoteOff with the ~200 ms lookahead. On browsers without
+    // `cancelAndHoldAtTime` (Firefox) the value comes from the shadow
+    // event list kept by `audio-param.ts`.
     protected applyRelease(gainParam: AudioParam, time: number) {
-        if (typeof gainParam.cancelAndHoldAtTime === "function") {
-            gainParam.cancelAndHoldAtTime(time);
-        } else {
-            gainParam.cancelScheduledValues(time);
-            gainParam.setValueAtTime(gainParam.value, time);
-        }
-        gainParam.linearRampToValueAtTime(0, time + this.releaseTime);
+        cancelAndHold(gainParam, time);
+        scheduleLinearRamp(gainParam, 0, time + this.releaseTime);
     }
 
     // Wire the channel-wide detune offset (current pitch bend + fine + coarse
