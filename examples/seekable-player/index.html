@@ -18,7 +18,7 @@
         <section id="panel-smf" class="partition">
             <h2>Load SMF</h2>
             <input id="fileButton" type="file" accept=".mid,.midi,audio/midi" />
-            <div id="sampleSongs" hidden>
+            <div id="sampleSongs">
                 <select id="songSelector"></select>
                 <button id="loadSongButton" type="button">Load</button>
             </div>
@@ -62,7 +62,7 @@
                 <span class="seek-readout-sep">·</span>
                 <output id="seekBarBeatReadout" for="seekBar">1:1</output>
             </div>
-            <div id="markerSeek" class="marker-seek" hidden>
+            <div id="markerSeek" class="marker-seek">
                 <label class="marker-seek-label" for="markerSelect">Marker</label>
                 <select id="markerSelect" class="marker-seek-select">
                     <option value="" disabled selected>Jump to marker…</option>
@@ -80,7 +80,7 @@
         </section>
 
         <section id="panel-keyboard" class="partition">
-            <h2>Channel Notes (16ch × 128key)</h2>
+            <h2>Channel Notes</h2>
             <canvas id="keyboardCanvas" width="640" height="240"></canvas>
             <p class="hint">
                 Y = MIDI channel (ch 1–16), X = key number (0–127). Active notes light up in their
