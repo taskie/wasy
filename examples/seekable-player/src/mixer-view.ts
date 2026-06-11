@@ -4,6 +4,8 @@ import { channelColor } from "./palette.js";
 interface ChannelState {
     mute: boolean;
     solo: boolean;
+    // Fader position as a 0..1 fraction of the slider; the audible gain
+    // applies the quadratic taper (see `effectiveGain`).
     volume: number;
 }
 
@@ -14,15 +16,27 @@ interface ChannelStrip {
     volumeReadout: HTMLOutputElement;
 }
 
+// Master fader reference: the engine's design level for `synth.gain.gain`
+// (0.1 leaves headroom for 16 summing channels before the compressor).
+const MASTER_REFERENCE_GAIN = 0.1;
+// Slider position that reproduces the reference gain. Positions above it
+// (up to 100) give ~+3.9 dB of boost; 0 is silence.
+const MASTER_DEFAULT_VALUE = 80;
+// Quadratic fader taper — the same curve family the synth uses for GM2
+// CC 7 / CC 11 — so equal slider steps feel like equal loudness steps,
+// instead of the top half of a linear fader doing almost nothing.
+const masterValueToGain = (value: number) =>
+    MASTER_REFERENCE_GAIN * (value / MASTER_DEFAULT_VALUE) ** 2;
+
 // 16-channel mixer + master fader. Writes to `synth.channelGains[ch].gain`
 // and `synth.gain.gain` so SMF-driven CC 7 / CC 11 stay independent.
 // Solo / mute / volume state lives here; the synth itself has no concept
-// of either — effective gain = mute || (anySolo && !solo) ? 0 : volume.
+// of either — effective gain = mute || (anySolo && !solo) ? 0 : taper(volume).
 export class MixerView {
     private synth: SynthEngine | null = null;
     private channels: ChannelState[] = [];
     private strips: ChannelStrip[] = [];
-    private masterVolume = 0.1;
+    private masterValue = MASTER_DEFAULT_VALUE;
     private masterSlider!: HTMLInputElement;
     private masterReadout!: HTMLOutputElement;
 
@@ -47,7 +61,8 @@ export class MixerView {
         const c = this.channels[ch];
         if (c.mute) return 0;
         if (this.anySolo && !c.solo) return 0;
-        return c.volume;
+        // Quadratic taper, unity at the default fader top (100).
+        return c.volume * c.volume;
     }
 
     private applyChannel(ch: number) {
@@ -61,7 +76,7 @@ export class MixerView {
 
     private applyMaster() {
         if (this.synth == null) return;
-        this.synth.gain.gain.value = this.masterVolume;
+        this.synth.gain.gain.value = masterValueToGain(this.masterValue);
     }
 
     private render() {
@@ -82,10 +97,10 @@ export class MixerView {
         this.masterSlider.min = "0";
         this.masterSlider.max = "100";
         this.masterSlider.step = "1";
-        this.masterSlider.value = String(Math.round(this.masterVolume * 100));
+        this.masterSlider.value = String(this.masterValue);
         this.masterSlider.className = "mixer-slider";
         this.masterSlider.addEventListener("input", () => {
-            this.masterVolume = Number(this.masterSlider.value) / 100;
+            this.masterValue = Number(this.masterSlider.value);
             this.masterReadout.value = `${this.masterSlider.value}%`;
             this.applyMaster();
         });
