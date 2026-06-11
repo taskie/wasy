@@ -80,3 +80,107 @@ describe("matchSysEx / GS / XG reset detection", () => {
         expect(isGsReset(event as SystemExclusiveEvent)).toBe(true);
     });
 });
+
+// --- SynthEngine.applyResetAll -------------------------------------------
+
+import { SynthEngine } from "../src/synth-engine.js";
+import { DrumKitPatch } from "../src/synth.js";
+
+const recordingParam = (initial = 0) => ({
+    value: initial,
+    setValueAtTime() {},
+    linearRampToValueAtTime() {},
+    cancelScheduledValues() {},
+    cancelAndHoldAtTime() {},
+    connect() {},
+    disconnect() {},
+});
+
+const makeNode = (extras: Record<string, unknown> = {}) => ({
+    connect() {},
+    disconnect() {},
+    addEventListener() {},
+    removeEventListener() {},
+    ...extras,
+});
+
+const makeEngineContext = () =>
+    ({
+        currentTime: 0,
+        sampleRate: 44100,
+        createStereoPanner: () => makeNode({ pan: recordingParam() }),
+        createGain: () => makeNode({ gain: recordingParam() }),
+        createDynamicsCompressor: () => makeNode(),
+        createConvolver: () => makeNode({ buffer: null }),
+        createDelay: () => makeNode({ delayTime: recordingParam() }),
+        createConstantSource: () => makeNode({ offset: recordingParam(), start() {}, stop() {} }),
+        createBiquadFilter: () =>
+            makeNode({
+                frequency: recordingParam(),
+                Q: recordingParam(),
+                detune: recordingParam(),
+                type: "lowpass",
+            }),
+        createOscillator: () =>
+            makeNode({
+                frequency: recordingParam(),
+                detune: recordingParam(),
+                type: "sine",
+                start() {},
+                stop() {},
+            }),
+        createBufferSource: () =>
+            makeNode({
+                detune: recordingParam(),
+                buffer: null,
+                loop: false,
+                start() {},
+                stop() {},
+            }),
+        createBuffer: (channels: number, length: number, sampleRate: number) => ({
+            length,
+            sampleRate,
+            numberOfChannels: channels,
+            getChannelData: () => new Float32Array(length),
+        }),
+    }) as unknown as AudioContext;
+
+const ccEvent = (channel: number, controller: number, value: number) =>
+    Event.create(dv(controller, value), 0, 0xb0 | channel);
+const programChange = (channel: number, program: number) =>
+    Event.create(dv(program), 0, 0xc0 | channel);
+
+describe("SynthEngine.applyResetAll", () => {
+    it("restores default programs and controllers on every part", () => {
+        const engine = new SynthEngine(makeEngineContext(), makeNode() as AudioNode);
+
+        engine.receiveEvent(programChange(0, 30), 0);
+        engine.receiveEvent(ccEvent(0, 7, 50), 0);
+        // Melodize the drum part (bank MSB 0x79 + program change).
+        engine.receiveEvent(ccEvent(9, 0, 0x79), 0);
+        engine.receiveEvent(programChange(9, 30), 0);
+        expect(engine.instruments[9].patch).not.toBeInstanceOf(DrumKitPatch);
+        const overriddenCh0 = engine.instruments[0].patch;
+
+        engine.applyResetAll(1);
+
+        expect(engine.instruments[0].volume).toBe(100);
+        expect(engine.instruments[0].patch).not.toBe(overriddenCh0);
+        // Bank MSB is back to 0 → channel 9 is the drum part again.
+        expect(engine.instruments[9].patch).toBeInstanceOf(DrumKitPatch);
+    });
+
+    it("is triggered by GS Reset SysEx, programs included", () => {
+        const engine = new SynthEngine(makeEngineContext(), makeNode() as AudioNode);
+
+        engine.receiveEvent(ccEvent(9, 0, 0x79), 0);
+        engine.receiveEvent(programChange(9, 30), 0);
+        engine.receiveEvent(ccEvent(0, 7, 50), 0);
+        expect(engine.instruments[9].patch).not.toBeInstanceOf(DrumKitPatch);
+
+        engine.receiveEvent(new SystemExclusiveEvent(dv(...GS_BODY), 0, 0xf0), 1);
+
+        expect(engine.instruments[0].volume).toBe(100);
+        expect(engine.instruments[9].patch).toBeInstanceOf(DrumKitPatch);
+    });
+});

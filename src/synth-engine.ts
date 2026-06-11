@@ -208,9 +208,7 @@ export class SynthEngine {
             // Detect at the engine level (not per-Instrument) so the 16-way
             // SysEx broadcast doesn't trigger 16 independent resets.
             if (isGsReset(event) || isXgReset(event)) {
-                for (const instrument of this.instruments) {
-                    instrument.applyReset(time);
-                }
+                this.applyResetAll(time);
                 return;
             }
             for (const instrument of this.instruments) {
@@ -221,6 +219,19 @@ export class SynthEngine {
                 instrument.receiveEvent(event, time);
             }
         }
+    }
+
+    // Reset every part to GM power-on defaults: all controller state via
+    // `Instrument.applyReset` (which also ramps the audio params back) and
+    // the program back to 0 — Acoustic Grand Piano, or the Standard Kit on
+    // the drum part. Triggered by GS Reset / XG System On SysEx and by
+    // `Wasy.load` / `unload`, so a newly loaded song never inherits the
+    // previous song's programs or controllers.
+    applyResetAll(time: number = this.audioContext.currentTime) {
+        this.instruments.forEach((instrument, i) => {
+            instrument.applyReset(time);
+            instrument.patch = generatePatch(instrument, 0, isDrumChannel(i, instrument.bankMSB));
+        });
     }
 
     // Pay the Web Audio cold-start cost up front by firing a velocity-1
