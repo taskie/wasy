@@ -89,6 +89,9 @@ export class SmfPlayer {
         this.timer.invalidate();
         this.timer.tick = 0;
         this.timer.oldTick = 0;
+        // SMF default tempo (120 BPM). Without this, a file with no tempo
+        // event would inherit whatever tempo the previous song last set.
+        this.timer.beatsPerMinute = 120;
         if (this.playerWorker != null) {
             this.playerWorker.terminate();
             this.playerWorker = undefined;

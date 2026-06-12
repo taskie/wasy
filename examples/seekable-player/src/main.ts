@@ -318,6 +318,10 @@ class Application {
         const { synth, player } = await this.ensureAudio();
 
         synth.pause();
+        // GM power-on state: don't let the previous song's programs /
+        // controllers (volume, expression, bend range, ...) leak into the
+        // new one.
+        synth.applyResetAll();
         // Await the worker: parse + analyze runs on the worker thread, then
         // the worker posts SongInfo back. Once load() resolves, both
         // `player.songInfo` (UI: piano-roll, metadata, duration) and the

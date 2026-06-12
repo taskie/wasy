@@ -64,6 +64,10 @@ export class Wasy {
 
     load(buffer: ArrayBuffer): Promise<void> {
         this.engine.pause();
+        // GM power-on state for the incoming song — programs and
+        // controllers must not leak from the previous song (e.g. an
+        // expression fade-out at the end of song A silencing song B).
+        this.engine.applyResetAll();
         return this.player.load(buffer);
     }
 
@@ -74,6 +78,7 @@ export class Wasy {
     unload() {
         this.player.unload();
         this.engine.pause();
+        this.engine.applyResetAll();
     }
 
     // See `SynthEngine.prewarm` — fires inaudible NoteOn/NoteOff on every
