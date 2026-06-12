@@ -61,11 +61,12 @@ const compileOscillatorTone = (
             throw new Error("compileTone: ADSR + oneShot is not supported");
         }
         const patch = new SimpleOscillatorPatch(instrument, oscillatorType, destination);
+        patch.duty = source.duty;
         applyAdsrOverrides(patch, env);
         return patch;
     }
     if (def.oneShot) {
-        return new OneShotOscillatorPatch(
+        const patch = new OneShotOscillatorPatch(
             instrument,
             env.duration,
             fixed,
@@ -74,8 +75,10 @@ const compileOscillatorTone = (
             env.begin,
             env.end,
         );
+        patch.duty = source.duty;
+        return patch;
     }
-    return new GainedOscillatorPatch(
+    const patch = new GainedOscillatorPatch(
         instrument,
         env.begin,
         env.end,
@@ -83,6 +86,8 @@ const compileOscillatorTone = (
         oscillatorType,
         destination,
     );
+    patch.duty = source.duty;
+    return patch;
 };
 
 const compileNoiseTone = (

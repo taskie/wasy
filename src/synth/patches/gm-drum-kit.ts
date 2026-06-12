@@ -179,9 +179,14 @@ export const gmDrumKit: DrumKitDefinition = {
             routing: "left",
         },
         56: {
-            // Cowbell: hard metallic clank, square + sweep gives the right edge.
+            // Cowbell: hard metallic clank, 25% pulse + sweep gives the right edge.
             name: "Cowbell",
-            source: { kind: "oscillator", oscillatorType: "square", pitch: { fixed: 800 } },
+            source: {
+                kind: "oscillator",
+                oscillatorType: "square",
+                duty: 0.25,
+                pitch: { fixed: 800 },
+            },
             envelope: { type: "ramp", begin: 1, end: 0, duration: 0.15 },
             oneShot: true,
             routing: "center",
@@ -338,23 +343,38 @@ export const gmDrumKit: DrumKitDefinition = {
 
         // 75..77: wooden percussion (claves, wood blocks).
         75: {
-            // Claves: hard wood click.
+            // Claves: hard wood click — 12.5% pulse keeps it thin.
             name: "Claves",
-            source: { kind: "oscillator", oscillatorType: "square", pitch: { fixed: 2500 } },
+            source: {
+                kind: "oscillator",
+                oscillatorType: "square",
+                duty: 0.125,
+                pitch: { fixed: 2500 },
+            },
             envelope: { type: "ramp", begin: 1, end: 0, duration: 0.05 },
             oneShot: true,
             routing: "center",
         },
         76: {
             name: "High Wood Block",
-            source: { kind: "oscillator", oscillatorType: "square", pitch: { fixed: 1200 } },
+            source: {
+                kind: "oscillator",
+                oscillatorType: "square",
+                duty: 0.125,
+                pitch: { fixed: 1200 },
+            },
             envelope: { type: "ramp", begin: 1, end: 0, duration: 0.08 },
             oneShot: true,
             routing: "center",
         },
         77: {
             name: "Low Wood Block",
-            source: { kind: "oscillator", oscillatorType: "square", pitch: { fixed: 900 } },
+            source: {
+                kind: "oscillator",
+                oscillatorType: "square",
+                duty: 0.125,
+                pitch: { fixed: 900 },
+            },
             envelope: { type: "ramp", begin: 1, end: 0, duration: 0.08 },
             oneShot: true,
             routing: "center",

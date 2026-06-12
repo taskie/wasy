@@ -3,7 +3,11 @@ import type { ToneDefinition } from "../types.js";
 // Chiptune-flavored GM 128 melodic patches. The oscillator palette
 // (sine / square / triangle / sawtooth / noise) and envelope shapes
 // are tuned by ear toward an NES / Game Boy aesthetic rather than
-// literal acoustic emulation. All envelopes use the AHDSFR-extended
+// literal acoustic emulation. Square voices may carry a `duty` (0.125 /
+// 0.25) for NES-style thin pulses — the core of the 2A03 palette:
+// 12.5% reads thin / nasal (harpsichord, clav, muted, double reeds),
+// 25% is the classic full lead / brass / piano pulse, and plain 50%
+// (no `duty`) keeps the hollow odd-harmonics square (clarinet, organ). All envelopes use the AHDSFR-extended
 // `"adsr"` schema (the tag is kept for backward compat); `sustain=0`
 // with a positive `decay` produces a percussive pluck, while omitting
 // all of `hold` / `decay` / `sustain` / `fade` keeps the `Patch`
@@ -12,15 +16,17 @@ import type { ToneDefinition } from "../types.js";
 // articulation); `fade` lets a held key gradually diminish toward 0
 // over the given duration so pads / long voices feel less static.
 export const gmPatches: ToneDefinition[] = [
-    // 0..7: Piano family — chiptune "piano" reads as a fast pluck.
+    // 0..7: Piano family — chiptune "piano" reads as a fast pluck on a
+    // 25% pulse (the canonical chip piano); brighter variants thin out
+    // toward 12.5%.
     {
         name: "Acoustic Grand Piano",
-        source: { kind: "oscillator", oscillatorType: "triangle" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.4, sustain: 0, release: 0.08 },
     },
     {
         name: "Bright Piano",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.35, sustain: 0, release: 0.08 },
     },
     {
@@ -30,7 +36,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Honky-tonk Piano",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.3, sustain: 0, release: 0.05 },
     },
     {
@@ -39,19 +45,20 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.005, decay: 0.6, sustain: 0.2, release: 0.1 },
     },
     {
-        // EP2 = brighter / more synthetic than EP1; square gives the FM-piano edge.
+        // EP2 = brighter / more synthetic than EP1; a 25% pulse gives the FM-piano edge.
         name: "Electric Piano 2",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.005, decay: 0.6, sustain: 0.2, release: 0.1 },
     },
     {
+        // 12.5% pulse is the canonical chip harpsichord twang.
         name: "Harpsichord",
-        source: { kind: "oscillator", oscillatorType: "sawtooth" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.4, sustain: 0, release: 0.05 },
     },
     {
         name: "Clavi",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.25, sustain: 0, release: 0.05 },
     },
 
@@ -146,8 +153,9 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.1, release: 0.3 },
     },
     {
+        // Reedy / nasal — a thin pulse separates it from the sawtooth accordions.
         name: "Reed organ",
-        source: { kind: "oscillator", oscillatorType: "sawtooth" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.05, release: 0.1 },
     },
     {
@@ -157,7 +165,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Harmonica",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.02, release: 0.08 },
     },
     {
@@ -173,8 +181,9 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.002, decay: 0.5, sustain: 0, release: 0.1 },
     },
     {
+        // Steel strings ring brighter than nylon; 25% pulse carries the pick edge.
         name: "Acoustic Guitar (steel)",
-        source: { kind: "oscillator", oscillatorType: "sawtooth" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.5, sustain: 0, release: 0.1 },
     },
     {
@@ -189,7 +198,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Electric Guitar (muted)",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.1, sustain: 0, release: 0.04 },
     },
     {
@@ -221,7 +230,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Electric Bass (pick)",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.002, decay: 0.15, sustain: 0.5, release: 0.05 },
     },
     {
@@ -231,7 +240,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Slap Bass 1",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.001, decay: 0.2, sustain: 0.3, release: 0.05 },
     },
     {
@@ -247,7 +256,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Synth Bass 2",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.005, release: 0.05 },
     },
 
@@ -360,10 +369,11 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.001, decay: 0.15, sustain: 0, release: 0.05 },
     },
 
-    // 56..63: Brass — square/sawtooth with a perceptible attack and full sustain.
+    // 56..63: Brass — the 25% pulse is the canonical chip brass; low brass
+    // keeps sawtooth/triangle for weight.
     {
         name: "Trumpet",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: {
             type: "adsr",
             attack: 0.01,
@@ -399,7 +409,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Muted Trumpet",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.005, decay: 0.05, sustain: 0.7, release: 0.05 },
     },
     {
@@ -432,40 +442,43 @@ export const gmPatches: ToneDefinition[] = [
         envelope: { type: "adsr", attack: 0.01, hold: 0.1, release: 0.08 },
     },
     {
+        // Differentiate from Synth Brass 1 (sawtooth): pulse-brass flavor.
         name: "Synth Brass 2",
-        source: { kind: "oscillator", oscillatorType: "sawtooth" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.02, hold: 0.1, release: 0.08 },
     },
 
-    // 64..71: Reed — square reads as nasal reed in chiptune; bassoon uses triangle.
+    // 64..71: Reed — thin pulses read as nasal reeds (12.5% for the
+    // double reeds, 25% for saxes); clarinet keeps the plain 50% square,
+    // whose odd-harmonics spectrum is physically the clarinet's.
     {
         name: "Soprano Sax",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.03, decay: 0.05, sustain: 0.85, release: 0.1 },
     },
     {
         name: "Alto Sax",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.03, decay: 0.05, sustain: 0.85, release: 0.1 },
     },
     {
         name: "Tenor Sax",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.03, decay: 0.05, sustain: 0.85, release: 0.1 },
     },
     {
         name: "Baritone Sax",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.04, decay: 0.05, sustain: 0.85, release: 0.12 },
     },
     {
         name: "Oboe",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.02, release: 0.08 },
     },
     {
         name: "English Horn",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.02, release: 0.08 },
     },
     {
@@ -539,7 +552,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Lead 4 (chiff)",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.001, decay: 0.05, sustain: 0.7, release: 0.05 },
     },
     {
@@ -568,7 +581,7 @@ export const gmPatches: ToneDefinition[] = [
     // level for the whole note.
     {
         name: "Pad 1 (Fantasia)",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: {
             type: "adsr",
             attack: 0.005,
@@ -600,7 +613,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Pad 6 (metallic)",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.4, fade: 6.0, release: 0.6 },
     },
     {
@@ -618,7 +631,7 @@ export const gmPatches: ToneDefinition[] = [
     // 96..103: FX — atmospheric textures; FX 1 is a noise-based rain wash, FX 3 is a bell pluck.
     {
         name: "FX 1 (rain)",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: {
             type: "adsr",
             attack: 0.001,
@@ -645,7 +658,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "FX 5 (brightness)",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: {
             type: "adsr",
             attack: 0.005,
@@ -679,12 +692,12 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Banjo",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.001, decay: 0.3, sustain: 0, release: 0.05 },
     },
     {
         name: "Shamisen",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.001, decay: 0.4, sustain: 0, release: 0.08 },
     },
     {
@@ -709,7 +722,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Shanai",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.03, release: 0.1 },
     },
 
@@ -740,7 +753,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Woodblock",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.125 },
         envelope: { type: "adsr", attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 },
     },
     {
@@ -756,7 +769,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Synth Drum",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.001, decay: 0.25, sustain: 0, release: 0.05 },
     },
     {
@@ -791,7 +804,7 @@ export const gmPatches: ToneDefinition[] = [
     },
     {
         name: "Telephone Ring",
-        source: { kind: "oscillator", oscillatorType: "square" },
+        source: { kind: "oscillator", oscillatorType: "square", duty: 0.25 },
         envelope: { type: "adsr", attack: 0.001, release: 0.05 },
     },
     {

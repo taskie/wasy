@@ -52,6 +52,13 @@ export type FrequencySpec = "tracking" | { fixed: number };
 export type OscillatorSource = {
     kind: "oscillator";
     oscillatorType: OscillatorType;
+    // Pulse duty cycle in (0, 1), only meaningful with
+    // `oscillatorType: "square"`. When set, the oscillator plays a
+    // band-limited rectangular wave of that duty via `PeriodicWave`
+    // (NES-style 0.125 / 0.25 thin pulses) instead of the built-in 50%
+    // square. Omit for the plain 50% square. `d` and `1 − d` have the
+    // same magnitude spectrum, so 0.75 sounds identical to 0.25.
+    duty?: number;
     pitch?: FrequencySpec;
 };
 
