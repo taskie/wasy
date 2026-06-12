@@ -40,6 +40,13 @@ export class Wasy {
     get timer() {
         return this.player.timer;
     }
+    // See `SmfPlayer.lookaheadSeconds` — change while stopped.
+    get lookaheadSeconds() {
+        return this.player.lookaheadSeconds;
+    }
+    set lookaheadSeconds(seconds: number) {
+        this.player.lookaheadSeconds = seconds;
+    }
     get playerWorker() {
         return this.player.playerWorker;
     }

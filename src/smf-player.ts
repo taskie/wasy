@@ -8,6 +8,13 @@ export interface TimedEvent {
     midiEvent: midi.Event;
 }
 
+// Bounds for `SmfPlayer.lookaheadSeconds`. The floor must comfortably
+// exceed the timer's wake-up interval (25 ms) plus `setInterval` jitter,
+// or events start getting scheduled in the past (Web Audio then plays
+// them "as soon as possible" and attacks smear); the ceiling is sanity.
+export const MIN_LOOKAHEAD_SECONDS = 0.05;
+export const MAX_LOOKAHEAD_SECONDS = 1.0;
+
 export class SmfPlayer {
     timer: timer.Timer;
     playerWorker?: Worker;
@@ -46,6 +53,24 @@ export class SmfPlayer {
 
     get songInfo(): SongInfo | null {
         return this._songInfo;
+    }
+
+    // Scheduling lookahead (`Timer.delayInSeconds`, default 0.2 s): every
+    // event is dispatched this many seconds before its audio time so Web
+    // Audio can render it sample-accurately despite `setInterval` jitter.
+    // Trade-off: dispatch-driven consumers (`onTimedEvent` listeners, UI
+    // views) and `timer.tick` lead the audible sound by exactly this
+    // amount. Change while stopped — events already dispatched keep their
+    // old offset, so a mid-playback change audibly shifts the timeline by
+    // the difference.
+    get lookaheadSeconds(): number {
+        return this.timer.delayInSeconds;
+    }
+    set lookaheadSeconds(seconds: number) {
+        this.timer.delayInSeconds = Math.min(
+            MAX_LOOKAHEAD_SECONDS,
+            Math.max(MIN_LOOKAHEAD_SECONDS, seconds),
+        );
     }
 
     play() {

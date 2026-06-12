@@ -129,7 +129,7 @@ text 系 Meta event は `MetaEvent.text(encoding?)` でデコードできる。`
     - 各 `Event` を `Event.create()` で再構築 (構造化複製で型情報が落ちるため)
     - `_emitter` 経由で `Wasy` および外部購読者に `TimedEvent` を 1 イベント=1 emit で通知 (非 ChannelEvent は worker 側で 16 ch に複製されているため channel 0 バケット経由で代表化)
     - `TempoMetaEvent` を見たら `timer.secondsPerBeat` を更新
-5. `Wasy` は `TimedEvent` を受けて `engine.receiveEvent(midiEvent, accurateTime)` で発音を Web Audio に予約。`accurateTime` = `currentTime + delayInSeconds (=200ms lookahead) + (eventTick - oldTick) / ticksPerSecond`。
+5. `Wasy` は `TimedEvent` を受けて `engine.receiveEvent(midiEvent, accurateTime)` で発音を Web Audio に予約。`accurateTime` = `currentTime + delayInSeconds (=200ms lookahead) + (eventTick - oldTick) / ticksPerSecond`。lookahead は `SmfPlayer.lookaheadSeconds` (= `Wasy.lookaheadSeconds`) で 50ms〜1s にクランプして変更できる。ディスパッチ済みイベントは旧値のままスケジュールされるため、**変更は停止中に行う**のが契約 (再生中に変えると差分だけ音側のタイムラインがずれる)。なお `onTimedEvent` 駆動の UI (キーボード / イベントログ等) と `timer.tick` はディスパッチ時点 = 可聴音より lookahead 分だけ先行する。
 
 ### seek
 

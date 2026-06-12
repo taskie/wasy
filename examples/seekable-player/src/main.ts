@@ -12,6 +12,7 @@ import { PianoRollView } from "./piano-roll-view.js";
 import { KeyboardView } from "./keyboard-view.js";
 import { AnalyserView } from "./analyser-view.js";
 import { MixerView } from "./mixer-view.js";
+import { PreferenceView } from "./preference-view.js";
 import { EventLogView } from "./event-log-view.js";
 import { ChannelStatusView } from "./channel-status-view.js";
 import { WebMidiView } from "./web-midi-view.js";
@@ -62,6 +63,7 @@ class Application {
     private keyboardView!: KeyboardView;
     private analyserView!: AnalyserView;
     private mixerView!: MixerView;
+    private preferenceView!: PreferenceView;
     private eventLogView!: EventLogView;
     private channelStatusView!: ChannelStatusView;
     private webMidiView!: WebMidiView;
@@ -121,6 +123,7 @@ class Application {
 
         this.mixerView = new MixerView(q<HTMLElement>("#mixer"));
         this.eventLogView = new EventLogView(q<HTMLElement>("#eventLog"));
+        this.preferenceView = new PreferenceView(q<HTMLElement>("#preference"));
 
         const channelStatusCanvas = q<HTMLCanvasElement>("#channelStatusCanvas");
         this.channelStatusView = new ChannelStatusView(
@@ -233,6 +236,8 @@ class Application {
             this.player = new SmfPlayer(ctx);
             this.player.onTimedEvent((e) => this.onTimedEvent(e));
             this.mixerView.setSynth(this.synth);
+            // Re-apply the persisted lookahead before anything is scheduled.
+            this.preferenceView.setPlayer(this.player);
             // Pay Web Audio graph cold-start now (silently, velocity 1) so the
             // first real attack at song start doesn't allocate nodes inside
             // the audio thread — that hitch was previously most audible on
@@ -508,6 +513,9 @@ class Application {
         this.playButton.disabled = !hasBuffer || !paused;
         this.pauseButton.disabled = !hasBuffer || paused;
         this.stopButton.disabled = !hasBuffer;
+        // Lookahead is only safely changeable while stopped (see
+        // SmfPlayer.lookaheadSeconds); lock the preference during playback.
+        this.preferenceView.setLocked(!paused);
     }
 
     private tick() {
