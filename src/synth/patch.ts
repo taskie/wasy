@@ -90,13 +90,14 @@ export abstract class Patch<T extends Monophony> implements inst.Patch<T> {
     }
 
     // Schedule release: ramp from whatever value is on the param at audio
-    // time `time` down to 0 over `releaseTime`. `cancelAndHold` anchors the
-    // ramp at the envelope's value at `time` (which may be mid-attack or
-    // mid-decay) — not `gainParam.value`, which reflects the value at
-    // `currentTime` and would diverge from `time` when the player schedules
-    // NoteOff with the ~200 ms lookahead. On browsers without
-    // `cancelAndHoldAtTime` (Firefox) the value comes from the shadow
-    // event list kept by `audio-param.ts`.
+    // time `time` down to 0 over `releaseTime`. `cancelAndHold` pins the
+    // envelope's value at `time` (which may be mid-attack or mid-decay)
+    // with an explicit anchor event, so the ramp below starts exactly at
+    // `time` — not at the previous envelope event (which is where a bare
+    // `linearRampToValueAtTime` would anchor for a sustained note, making
+    // the release audibly start a whole lookahead early), and not at
+    // `gainParam.value` (the value at `currentTime`, which diverges from
+    // `time` under the player's lookahead).
     protected applyRelease(gainParam: AudioParam, time: number) {
         cancelAndHold(gainParam, time);
         scheduleLinearRamp(gainParam, 0, time + this.releaseTime);

@@ -83,6 +83,22 @@ describe("valueAtTime", () => {
         expect(valueAtTime(param, 2)).toBe(3);
     });
 
+    it("keeps enough history for a release landing mid-attack", () => {
+        const param = fallbackParam(0);
+        // AHDSFR-like schedule: attack anchor + ramp, hold anchor, decay
+        // ramp, long fade ramp — five inserts before any query.
+        scheduleValueAtTime(param, 0, 1.0);
+        scheduleLinearRamp(param, 1, 1.005);
+        scheduleValueAtTime(param, 1, 1.105);
+        scheduleLinearRamp(param, 0.5, 1.305);
+        scheduleLinearRamp(param, 0, 9.305);
+        // A NoteOff scheduled mid-attack queries a time *earlier* than the
+        // already-inserted decay / fade events. Pruning must not have
+        // dropped the attack segment, or this would fall back to the stale
+        // `param.value` (0) and silence the note.
+        expect(valueAtTime(param, 1.002)).toBeCloseTo(0.4);
+    });
+
     it("survives pruning of stale events on long-lived params", () => {
         const param = fallbackParam();
         scheduleValueAtTime(param, 0, 0);
@@ -96,17 +112,69 @@ describe("valueAtTime", () => {
 });
 
 describe("cancelAndHold", () => {
-    it("delegates to native cancelAndHoldAtTime when available", () => {
+    it("never uses native cancelAndHoldAtTime, even when available", () => {
+        // The native method inserts a hold event only when it truncates a
+        // spanning event. Releasing a *sustained* note (all envelope events
+        // already in the past) would insert nothing, and the following
+        // release ramp would anchor at the attack end — audibly starting
+        // the release a full lookahead early on Chrome / Safari.
         const param = nativeParam();
         cancelAndHold(param, 1.5);
-        expect(param.calls).toEqual([{ kind: "cancelAndHoldAtTime", time: 1.5 }]);
+        expect(param.calls.find((c) => c.kind === "cancelAndHoldAtTime")).toBeUndefined();
+        expect(param.calls).toContainEqual({ kind: "cancelScheduledValues", time: 1.5 });
+        expect(param.calls).toContainEqual({
+            kind: "linearRampToValueAtTime",
+            value: 0,
+            time: 1.5,
+        });
     });
 
-    it("does not shadow-track params with native support", () => {
+    it("shadow-tracks every param, native support or not", () => {
         const param = nativeParam(42);
         scheduleValueAtTime(param, 7, 0);
-        // Untracked → falls back to param.value, not the scheduled 7.
-        expect(valueAtTime(param, 1)).toBe(42);
+        expect(valueAtTime(param, 1)).toBe(7);
+    });
+
+    it("anchors a held-note release at the hold time, not at the attack end", () => {
+        const param = nativeParam(0);
+        // Sustained note: attack finishes long before the NoteOff; nothing
+        // is scheduled after the hold time.
+        scheduleValueAtTime(param, 0, 1.0);
+        scheduleLinearRamp(param, 1, 1.005);
+
+        cancelAndHold(param, 3.0);
+
+        const hold = param.calls.find(
+            (c) => c.kind === "linearRampToValueAtTime" && c.time === 3.0,
+        );
+        expect(hold).toBeDefined();
+        expect((hold as { value: number }).value).toBeCloseTo(1);
+        // A release ramp scheduled next now starts from (3.0, 1) instead of
+        // sloping down from the attack end at 1.005.
+        expect(valueAtTime(param, 3.0)).toBeCloseTo(1);
+    });
+
+    it("reconstructs an in-flight decay instead of snapping back to its peak", () => {
+        const param = nativeParam(0);
+        // Long decay (e.g. a crash cymbal): peak at 0, ramping to 0 at 2.0.
+        scheduleValueAtTime(param, 1, 0);
+        scheduleLinearRamp(param, 0, 2.0);
+
+        // Expired mid-decay (next hit scheduled at 1.0, a lookahead ahead
+        // of "now"). cancelScheduledValues removes the whole in-flight
+        // ramp, so the anchor must be a ramp to (1.0, 0.5) that re-traces
+        // the original line — a setValueAtTime anchor would leave the
+        // param at the full peak for the entire lookahead window.
+        cancelAndHold(param, 1.0);
+
+        const anchor = param.calls.find(
+            (c) => c.kind === "linearRampToValueAtTime" && c.time === 1.0,
+        );
+        expect(anchor).toBeDefined();
+        expect((anchor as { value: number }).value).toBeCloseTo(0.5);
+        // The shadow list still interpolates the reconstructed segment.
+        expect(valueAtTime(param, 0.5)).toBeCloseTo(0.75);
+        expect(valueAtTime(param, 1.0)).toBeCloseTo(0.5);
     });
 
     it("anchors the fallback at the scheduled value at `time`, not param.value", () => {
@@ -115,7 +183,9 @@ describe("cancelAndHold", () => {
         scheduleLinearRamp(param, 0, 2);
         cancelAndHold(param, 0.5);
         expect(param.calls).toContainEqual({ kind: "cancelScheduledValues", time: 0.5 });
-        const hold = param.calls.find((c) => c.kind === "setValueAtTime" && c.time === 0.5);
+        const hold = param.calls.find(
+            (c) => c.kind === "linearRampToValueAtTime" && c.time === 0.5,
+        );
         expect(hold).toBeDefined();
         expect((hold as { value: number }).value).toBeCloseTo(0.75);
         // The held value persists in the shadow list for later queries.

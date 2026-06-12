@@ -63,6 +63,21 @@ export class SmfPlayer {
     // amount. Change while stopped — events already dispatched keep their
     // old offset, so a mid-playback change audibly shifts the timeline by
     // the difference.
+    // The tick position currently *audible* at the speakers. `timer.tick`
+    // is the scheduling frontier: events there are dispatched now but play
+    // `lookaheadSeconds` later, so the frontier leads the audible sound by
+    // the lookahead. UI that should track what the listener hears (now
+    // line, keyboard lights, time readouts) wants this value instead.
+    // Clamped to [0, timer.tick]; while paused the frontier is returned
+    // as-is (sound has stopped, and real time must not keep advancing it).
+    get audibleTick(): number {
+        const t = this.timer;
+        if (this.paused) return t.tick;
+        const now = this.audioContext.currentTime;
+        const tick = t.tick + (now - t.currentTime - this.lookaheadSeconds) * t.ticksPerSecond;
+        return Math.min(t.tick, Math.max(0, tick));
+    }
+
     get lookaheadSeconds(): number {
         return this.timer.delayInSeconds;
     }

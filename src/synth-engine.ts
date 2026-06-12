@@ -201,6 +201,17 @@ export class SynthEngine {
     }
 
     receiveEvent(event: midi.Event, time: number) {
+        // Never schedule into the past. When the player dispatches late
+        // (small lookahead + setInterval jitter), Web Audio clamps the
+        // individual automation events to "now" but leaves ramp endpoints
+        // where they were — a 50 ms release collapses into a click and
+        // `oscillator.stop(time + release)` cuts early. Delaying the whole
+        // event keeps every envelope shape intact at the cost of a small
+        // timing slip. Monotone, so relative event order is preserved.
+        const now = this.audioContext.currentTime;
+        if (time < now) {
+            time = now;
+        }
         if (event instanceof midi.ChannelEvent) {
             this.instruments[event.channel].receiveEvent(event, time);
         } else if (event instanceof midi.SystemExclusiveEvent) {

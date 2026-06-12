@@ -64,6 +64,11 @@ class Application {
     private analyserView!: AnalyserView;
     private mixerView!: MixerView;
     private preferenceView!: PreferenceView;
+    // TimedEvents already handed to the synth but not yet audible —
+    // drained by tick() once audioContext.currentTime passes their
+    // scheduled audio time, so views track the *audible* state.
+    private pendingViewEvents: { event: TimedEvent; time: number }[] = [];
+    private pendingViewHead = 0;
     private eventLogView!: EventLogView;
     private channelStatusView!: ChannelStatusView;
     private webMidiView!: WebMidiView;
@@ -275,6 +280,15 @@ class Application {
             );
         }
         this.synth!.receiveEvent(e.midiEvent, time);
+        // Defer view updates to the event's audio time. Reflecting them at
+        // dispatch time made every visual (keyboard lights, channel status,
+        // log, marker) lead the audible sound by the whole lookahead — at
+        // 500 ms the keyboard appeared to release notes long before the
+        // sound ended. tick() drains this queue against currentTime.
+        this.pendingViewEvents.push({ event: e, time });
+    }
+
+    private dispatchViewEvent(e: TimedEvent) {
         this.keyboardView.onTimedEvent(e);
         this.eventLogView.onTimedEvent(e);
         this.channelStatusView.onTimedEvent(e);
@@ -282,6 +296,25 @@ class Application {
         if (e.midiEvent instanceof midi.MarkerMetaEvent) {
             this.syncMarkerSelect(e.midiEvent.tick);
         }
+    }
+
+    private flushPendingViewEvents() {
+        if (this.audioContext == null) return;
+        const now = this.audioContext.currentTime;
+        const pending = this.pendingViewEvents;
+        while (this.pendingViewHead < pending.length && pending[this.pendingViewHead].time <= now) {
+            this.dispatchViewEvent(pending[this.pendingViewHead++].event);
+        }
+        // Compact once fully drained so the array doesn't grow unbounded.
+        if (this.pendingViewHead === pending.length) {
+            pending.length = 0;
+            this.pendingViewHead = 0;
+        }
+    }
+
+    private clearPendingViewEvents() {
+        this.pendingViewEvents.length = 0;
+        this.pendingViewHead = 0;
     }
 
     private onExternalMidiEvent(e: midi.Event): void {
@@ -333,6 +366,7 @@ class Application {
         // playback state (timer.resolution) are populated. Single parse —
         // no main-thread `smf.parseSong(buffer)` needed.
         await player.load(buffer);
+        this.clearPendingViewEvents();
         const songInfo = player.songInfo!;
         this.songInfo = songInfo;
         this.refreshMeta();
@@ -395,6 +429,7 @@ class Application {
         if (!this.hasBuffer) return;
         this.player!.pause();
         this.synth!.pause();
+        this.clearPendingViewEvents();
         this.keyboardView.clear();
         this.refreshButtons();
     }
@@ -409,6 +444,7 @@ class Application {
         player.seek(0);
         player.pause();
         synth.pause();
+        this.clearPendingViewEvents();
         this.keyboardView.clear();
         this.trackInfoView.update(0);
         this.syncMarkerSelect(0);
@@ -433,6 +469,7 @@ class Application {
         // synth state matches what it would have been at `tick`.
         this.synth!.pause();
         this.player!.seek(tick);
+        this.clearPendingViewEvents();
         this.keyboardView.clear();
         this.trackInfoView.update(tick);
         this.syncMarkerSelect(tick);
@@ -458,6 +495,7 @@ class Application {
         const tick = Number(this.markerSelect.value);
         this.synth!.pause();
         this.player!.seek(tick);
+        this.clearPendingViewEvents();
         this.keyboardView.clear();
         this.trackInfoView.update(tick);
         this.syncMarkerSelect(tick);
@@ -519,8 +557,12 @@ class Application {
     }
 
     private tick() {
+        this.flushPendingViewEvents();
+        // `audibleTick` (not `timer.tick`): the now line / readouts track
+        // what the speakers are playing, not the scheduling frontier —
+        // otherwise they'd lead the sound by the lookahead.
         const currentTick = this.hasBuffer
-            ? Math.min(Math.max(0, this.player!.timer.tick), this.songInfo?.durationTicks ?? 0)
+            ? Math.min(Math.max(0, this.player!.audibleTick), this.songInfo?.durationTicks ?? 0)
             : 0;
         if (this.hasBuffer && !this.isUserSeeking) {
             const t = Math.round(currentTick);
