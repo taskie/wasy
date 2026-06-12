@@ -114,9 +114,10 @@ describe("OneShotNoisePatch.onExpired", () => {
         // Must use cancelAndHoldAtTime (or fallback) at the expire time so the
         // in-flight decay is anchored at its current value rather than snapping
         // back up to the held peak.
+        // The anchor is a ramp to (0.1, held value): it both re-traces the
+        // cancelled in-flight decay and gives the 5 ms fade its start.
         const anchored = newCalls.find(
-            (c) =>
-                c.kind === "cancelAndHoldAtTime" || (c.kind === "setValueAtTime" && c.time === 0.1),
+            (c) => c.kind === "linearRampToValueAtTime" && c.time === 0.1,
         );
         expect(anchored).toBeDefined();
         // Must NOT cut directly to 0 at the expire time — that would skip the
@@ -150,7 +151,7 @@ describe("OneShotNoisePatch.onExpired without cancelAndHoldAtTime (Firefox fallb
         patch.onExpired(mono, 0.1);
 
         const newCalls = gainCalls.slice(beforeExpire);
-        const hold = newCalls.find((c) => c.kind === "setValueAtTime" && c.time === 0.1);
+        const hold = newCalls.find((c) => c.kind === "linearRampToValueAtTime" && c.time === 0.1);
         expect(hold).toBeDefined();
         // The decay ramp runs baseGain → 0 over 1.5 s; at 0.1 s the shadow
         // tracker must compute the interpolated value — not the param's
@@ -174,9 +175,10 @@ describe("OneShotOscillatorPatch.onExpired", () => {
         patch.onExpired(mono, 0.1);
 
         const newCalls = gainCalls.slice(beforeExpire);
+        // The anchor is a ramp to (0.1, held value): it both re-traces the
+        // cancelled in-flight decay and gives the 5 ms fade its start.
         const anchored = newCalls.find(
-            (c) =>
-                c.kind === "cancelAndHoldAtTime" || (c.kind === "setValueAtTime" && c.time === 0.1),
+            (c) => c.kind === "linearRampToValueAtTime" && c.time === 0.1,
         );
         expect(anchored).toBeDefined();
         const hardCut = newCalls.find(
@@ -207,7 +209,7 @@ describe("OneShotOscillatorPatch.onExpired without cancelAndHoldAtTime (Firefox 
         patch.onExpired(mono, 0.1);
 
         const newCalls = gainCalls.slice(beforeExpire);
-        const hold = newCalls.find((c) => c.kind === "setValueAtTime" && c.time === 0.1);
+        const hold = newCalls.find((c) => c.kind === "linearRampToValueAtTime" && c.time === 0.1);
         expect(hold).toBeDefined();
         // Decay runs baseGain → 0 over 0.2 s; at 0.1 s we are halfway down.
         const baseGain = (100 / 127) ** 2;

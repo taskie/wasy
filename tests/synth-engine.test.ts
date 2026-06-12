@@ -150,6 +150,29 @@ const ccEvent = (channel: number, controller: number, value: number) =>
 const programChange = (channel: number, program: number) =>
     Event.create(dv(program), 0, 0xc0 | channel);
 
+describe("SynthEngine.receiveEvent time clamping", () => {
+    it("clamps event times that slipped into the past up to currentTime", () => {
+        const ctx = makeEngineContext();
+        const engine = new SynthEngine(ctx, makeNode() as AudioNode);
+        (ctx as unknown as { currentTime: number }).currentTime = 10;
+        const received: number[] = [];
+        engine.instruments[0].patch = {
+            receiveEvent: (_event: unknown, time: number) => {
+                received.push(time);
+            },
+        } as (typeof engine.instruments)[0]["patch"];
+
+        // Dispatched late (scheduled time already in the past): the whole
+        // event must slip to "now" so envelope ramps keep their shape,
+        // instead of Web Audio crushing them against stale endpoints.
+        engine.receiveEvent(Event.create(dv(60, 100), 0, 0x90), 9.5);
+        // On-time events pass through untouched.
+        engine.receiveEvent(Event.create(dv(62, 100), 0, 0x90), 10.5);
+
+        expect(received).toEqual([10, 10.5]);
+    });
+});
+
 describe("SynthEngine.applyResetAll", () => {
     it("restores default programs and controllers on every part", () => {
         const engine = new SynthEngine(makeEngineContext(), makeNode() as AudioNode);

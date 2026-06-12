@@ -40,6 +40,10 @@ export class Wasy {
     get timer() {
         return this.player.timer;
     }
+    // See `SmfPlayer.audibleTick` — the tick the listener is hearing now.
+    get audibleTick() {
+        return this.player.audibleTick;
+    }
     // See `SmfPlayer.lookaheadSeconds` — change while stopped.
     get lookaheadSeconds() {
         return this.player.lookaheadSeconds;

@@ -84,7 +84,7 @@ describe("Patch.applyRelease without cancelAndHoldAtTime (Firefox fallback)", ()
         patch.onNoteOff(mono, 0.002);
 
         const newCalls = calls.slice(beforeRelease);
-        const hold = newCalls.find((c) => c.kind === "setValueAtTime" && c.time === 0.002);
+        const hold = newCalls.find((c) => c.kind === "linearRampToValueAtTime" && c.time === 0.002);
         expect(hold).toBeDefined();
         expect((hold as { value: number }).value).toBeCloseTo(peak * (0.002 / 0.005));
         const ramp = newCalls.find(
@@ -106,7 +106,7 @@ describe("Patch.applyRelease without cancelAndHoldAtTime (Firefox fallback)", ()
         patch.onNoteOff(mono, 1);
 
         const newCalls = calls.slice(beforeRelease);
-        const hold = newCalls.find((c) => c.kind === "setValueAtTime" && c.time === 1);
+        const hold = newCalls.find((c) => c.kind === "linearRampToValueAtTime" && c.time === 1);
         expect(hold).toBeDefined();
         expect((hold as { value: number }).value).toBeCloseTo(peak);
     });
