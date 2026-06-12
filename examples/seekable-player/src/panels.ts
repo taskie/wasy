@@ -66,6 +66,13 @@ const PANEL_CONFIGS: PanelConfig[] = [
         defaultVisible: false,
     },
     {
+        id: "panel-preference",
+        label: "Preferences",
+        defaultX: 140,
+        defaultY: 260,
+        defaultVisible: false,
+    },
+    {
         id: "panel-footnote",
         label: "About",
         defaultX: 710,

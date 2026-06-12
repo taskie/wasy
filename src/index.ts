@@ -8,7 +8,7 @@ export { wasy, midiIn, midi, smf, smfAnalyze };
 
 export { Wasy } from "./wasy.js";
 export type { TimedEvent } from "./wasy.js";
-export { SmfPlayer } from "./smf-player.js";
+export { SmfPlayer, MAX_LOOKAHEAD_SECONDS, MIN_LOOKAHEAD_SECONDS } from "./smf-player.js";
 export { SynthEngine, isDrumChannel } from "./synth-engine.js";
 export { Instrument } from "./midi/instrument.js";
 export { instrumentPatchs, percussionKeyMap } from "./midi/gm.js";
