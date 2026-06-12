@@ -31,6 +31,7 @@ src/
 ├─ synth/
 │  ├─ patch.ts            Patch / Monophony 基底クラス (NoteOn/Off/Expired/PitchBend ライフサイクル)
 │  ├─ audio-param.ts      AudioParam スケジューリングヘルパ (cancelAndHoldAtTime 互換レイヤ + Firefox 向けシャドウトラッキング)
+│  ├─ periodic-wave.ts    duty 比可変パルス波 (PeriodicWave をフーリエ係数から生成、(ctx, duty) 単位でキャッシュ)
 │  ├─ types.ts            ToneDefinition / DrumKitDefinition / Envelope 型 (JSON 定義のスキーマ)
 │  ├─ compile.ts          compileTone / compileDrumKit (定義 → Patch クラス階層へのコンパイル)
 │  ├─ generate-patch.ts   generatePatch: GM プログラム番号 → Patch (gmPatches / gmDrumKit を参照)

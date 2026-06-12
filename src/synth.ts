@@ -7,6 +7,7 @@ import {
     scheduleLinearRamp,
     scheduleValueAtTime,
 } from "./synth/audio-param.js";
+import { getPulseWave } from "./synth/periodic-wave.js";
 
 // Squared velocity → gain mapping. The MIDI spec leaves the curve
 // implementation-defined, but DLS Level 1 / GM convention (and most
@@ -24,6 +25,12 @@ export class SimpleOscillatorMonophony extends Monophony {
 }
 
 export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony> {
+    // Pulse duty cycle in (0, 1); only meaningful when `oscillatorType`
+    // is "square". When set, notes play a band-limited rectangular wave
+    // of that duty (see `synth/periodic-wave.ts`) instead of the built-in
+    // 50% square. Assigned by `compileTone` from `OscillatorSource.duty`.
+    duty?: number;
+
     constructor(
         instrument: inst.Instrument<Monophony>,
         public oscillatorType: OscillatorType = "square",
@@ -42,7 +49,11 @@ export class SimpleOscillatorPatch extends Patch<SimpleOscillatorMonophony> {
         monophony.detunableNodes = [oscillator];
 
         // settings
-        oscillator.type = this.oscillatorType;
+        if (this.duty != null && this.oscillatorType === "square") {
+            oscillator.setPeriodicWave(getPulseWave(this.audioContext, this.duty));
+        } else {
+            oscillator.type = this.oscillatorType;
+        }
         oscillator.frequency.value = this.tuning.frequency(event.noteNumber);
         // Detune is driven by the channel-wide ConstantSourceNode; the
         // oscillator's own detune base stays at 0 and the connection sums
