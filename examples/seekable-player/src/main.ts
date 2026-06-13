@@ -404,7 +404,7 @@ class Application {
                 this.songInfo!.resolution,
             );
             opt.value = String(m.tick);
-            opt.textContent = `${smfAnalyze.formatTime(seconds)} (${m.tick} tick): ${m.text}`;
+            opt.textContent = `${smfAnalyze.formatTime(seconds)} (${m.tick} ticks): ${m.text}`;
             this.markerSelect.appendChild(opt);
         }
         this.syncMarkerSelect(0);
@@ -524,7 +524,7 @@ class Application {
     private updateReadout(tick: number) {
         const info = this.songInfo;
         const total = info?.durationTicks ?? 0;
-        this.seekReadout.value = `${tick} / ${total} tick`;
+        this.seekReadout.value = `${tick} / ${total} ticks`;
         if (info != null) {
             const bpm = this.bpmAtTick(tick);
             this.seekTempoReadout.value = `${bpm.toFixed(2)} BPM`;

@@ -44,10 +44,10 @@ export class WebMidiView {
         }
 
         if (!("requestMIDIAccess" in navigator)) {
-            this.statusEl.textContent = "Web MIDI API not supported in this browser.";
+            this.statusEl.textContent = "Web MIDI is not supported in this browser.";
             this.requestBtn.disabled = true;
         } else {
-            this.statusEl.textContent = "Web MIDI API: supported.";
+            this.statusEl.textContent = "Web MIDI is supported — request access to list devices.";
         }
 
         this.requestBtn.addEventListener("click", () => {
@@ -113,7 +113,7 @@ export class WebMidiView {
             li.className = "webmidi-no-devices";
             li.textContent = "No MIDI input devices connected.";
             this.deviceListEl.appendChild(li);
-            this.statusEl.textContent = "Web MIDI: no devices connected.";
+            this.statusEl.textContent = "Web MIDI ready — no input devices connected.";
             return;
         }
 
@@ -140,6 +140,6 @@ export class WebMidiView {
         }
 
         const n = inputs.length;
-        this.statusEl.textContent = `Web MIDI: ${n} device${n !== 1 ? "s" : ""} connected.`;
+        this.statusEl.textContent = `Web MIDI ready — ${n} input device${n !== 1 ? "s" : ""} connected.`;
     }
 }

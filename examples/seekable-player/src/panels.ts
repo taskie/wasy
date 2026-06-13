@@ -179,7 +179,7 @@ export function initPanels(): void {
             closeBtn.className = "panel-close-btn";
             closeBtn.type = "button";
             closeBtn.textContent = "×";
-            closeBtn.title = "hide";
+            closeBtn.title = "Hide";
             closeBtn.addEventListener("click", () => {
                 panel.hidden = true;
                 syncCheckbox(cfg.id, false);

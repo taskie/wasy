@@ -31,7 +31,7 @@
                 <dd id="metaFormat">-</dd>
                 <dt>Tracks</dt>
                 <dd id="metaTracks">-</dd>
-                <dt>Resolution (TPQN)</dt>
+                <dt>Resolution (ticks/quarter)</dt>
                 <dd id="metaResolution">-</dd>
             </dl>
         </section>
@@ -39,9 +39,9 @@
         <section id="panel-transport" class="partition">
             <h2>Transport / Seek</h2>
             <div class="transport">
-                <button id="playButton" type="button">play</button>
-                <button id="pauseButton" type="button">pause</button>
-                <button id="stopButton" type="button">stop</button>
+                <button id="playButton" type="button">Play</button>
+                <button id="pauseButton" type="button">Pause</button>
+                <button id="stopButton" type="button">Stop</button>
                 <span class="transport-sep"></span>
                 <div class="speed-selector">
                     <button class="speed-btn" type="button" data-speed="0.5">0.5x</button>
@@ -53,7 +53,7 @@
             </div>
             <div class="seek">
                 <input id="seekBar" type="range" min="0" max="0" step="1" value="0" disabled />
-                <output id="seekReadout" for="seekBar">0 / 0 tick</output>
+                <output id="seekReadout" for="seekBar">0 / 0 ticks</output>
             </div>
             <div class="seek-readouts">
                 <output id="seekTempoReadout" for="seekBar">—</output>
@@ -74,8 +74,8 @@
             <h2>Piano Roll</h2>
             <canvas id="pianoRollCanvas" width="640" height="360"></canvas>
             <p class="hint">
-                Y = pitch, X = time. The red vertical line is the now-line. Color-coded by channel;
-                ch 10 (drums) is grey.
+                X = time, Y = pitch. The red vertical line is the playhead. Notes are colored by
+                channel; ch 10 (drums) is gray.
             </p>
         </section>
 
@@ -83,7 +83,7 @@
             <h2>Channel Notes</h2>
             <canvas id="keyboardCanvas" width="640" height="240"></canvas>
             <p class="hint">
-                Y = MIDI channel (ch 1–16), X = key number (0–127). Active notes light up in their
+                X = key number (0–127), Y = MIDI channel (1–16). Active notes light up in their
                 channel color.
             </p>
         </section>
@@ -91,7 +91,7 @@
         <section id="panel-analyser" class="partition">
             <h2>Waveform / Spectrum</h2>
             <canvas id="analyserCanvas" width="640" height="160"></canvas>
-            <p class="hint">Fill = frequency domain, line = time domain.</p>
+            <p class="hint">Fill = spectrum (frequency domain), line = waveform (time domain).</p>
         </section>
 
         <section id="panel-mixer" class="partition">
@@ -136,8 +136,9 @@
             <h2>Event Log</h2>
             <div id="eventLog"></div>
             <p class="hint">
-                Incoming MIDI event stream. Toggle categories with the checkboxes; pause stops
-                incoming events, clear discards history. Capped at 200 entries.
+                Incoming MIDI event stream. Toggle categories with the checkboxes;
+                <b>Pause</b> stops incoming events, <b>Clear</b> discards history. Capped at 200
+                entries.
             </p>
         </section>
 
