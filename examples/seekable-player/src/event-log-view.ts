@@ -301,16 +301,16 @@ export class EventLogView {
         controls.appendChild(spacer);
         this.pauseButton = document.createElement("button");
         this.pauseButton.type = "button";
-        this.pauseButton.textContent = "pause";
+        this.pauseButton.textContent = "Pause";
         this.pauseButton.addEventListener("click", () => {
             this.paused = !this.paused;
             this.pauseButton.classList.toggle("active", this.paused);
-            this.pauseButton.textContent = this.paused ? "resume" : "pause";
+            this.pauseButton.textContent = this.paused ? "Resume" : "Pause";
         });
         controls.appendChild(this.pauseButton);
         const clearButton = document.createElement("button");
         clearButton.type = "button";
-        clearButton.textContent = "clear";
+        clearButton.textContent = "Clear";
         clearButton.addEventListener("click", () => this.clear());
         controls.appendChild(clearButton);
         this.root.appendChild(controls);

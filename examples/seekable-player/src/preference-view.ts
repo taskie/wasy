@@ -56,6 +56,7 @@ export class PreferenceView {
         const label = document.createElement("label");
         label.textContent = "Scheduling lookahead";
         label.htmlFor = "lookaheadSlider";
+        label.title = "How far ahead of the audio clock MIDI events are scheduled.";
         row.appendChild(label);
 
         this.slider = document.createElement("input");
@@ -85,16 +86,17 @@ export class PreferenceView {
 
         this.lockNote = document.createElement("p");
         this.lockNote.className = "hint";
-        this.lockNote.textContent = "Stop playback to change the lookahead.";
+        this.lockNote.textContent = "Stop playback to change this.";
         this.lockNote.hidden = true;
         this.root.appendChild(this.lockNote);
 
         const hint = document.createElement("p");
         hint.className = "hint";
         hint.textContent =
-            "Events are scheduled this far ahead of the audio clock. Larger = more robust against timer jitter; " +
-            "smaller = tighter sync between the views (piano roll / keyboard lead the sound by this amount) and the audio. " +
-            "Applies while stopped; persisted in this browser.";
+            "How far ahead of the audio clock MIDI events are scheduled. Larger is more robust " +
+            "against timer jitter but adds delay before playback reacts to play / seek; smaller " +
+            "reacts faster but may drop or clip events on a busy page. Applies while stopped; " +
+            "saved in this browser.";
         this.root.appendChild(hint);
     }
 }

@@ -39,7 +39,7 @@ The workspace is a set of floating, draggable panels toggled from the view bar a
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SMF / transport     | File loader, play / pause / stop, seek bar with tick / time / bar:beat readouts, current BPM                                                                   |
 | Waveform / Spectrum | Oscilloscope and FFT view tapped from an `AnalyserNode`                                                                                                        |
-| Piano Roll          | Scrolling note display; auto-fits pitch range; beat + octave grid; channel-9 drums in grey                                                                     |
+| Piano Roll          | Scrolling note display; auto-fits pitch range; beat + octave grid; channel-9 drums in gray                                                                     |
 | Keyboard            | 16-row × 128-key activity strip driven by NoteOn / NoteOff events                                                                                              |
 | Metadata            | SMF header (format / tracks / resolution / duration) plus title, copyright, track names, instrument names, markers, and lyrics extracted from text Meta events |
 | Mixer               | Master fader + per-channel solo / mute / volume (writes to `SynthEngine.channelGains`)                                                                         |
