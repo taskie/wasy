@@ -502,6 +502,25 @@ code {
     opacity: 0.7;
 }
 
+.preference-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preference-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--color-accent);
+}
+
+.preference-row output {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85em;
+    text-align: right;
+    min-width: 6ch;
+    opacity: 0.7;
+}
+
 .event-log {
     display: flex;
     flex-direction: column;
