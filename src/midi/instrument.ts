@@ -146,8 +146,19 @@ export class Instrument<T> {
     fineTune!: number; // RPN 1: ±100 cents  (14-bit, center 0x2000)
     coarseTune!: number; // RPN 2: ±64 semitones × 100 cents (7-bit MSB, center 0x40)
 
-    // CC 1 — Modulation Wheel. 0 = no vibrato; 127 = ±50 cents at 5 Hz.
+    // CC 1 — Modulation Wheel. Drives vibrato depth as a fraction of
+    // `modDepthRangeCents` (combined with CC 77; see `_vibratoFraction`).
     modulationValue!: number;
+    // CC 76 — Vibrato Rate (GM2 sound controller). 64 = base 5 Hz LFO;
+    // each ±64 steps is ∓ / ± one octave of LFO rate.
+    vibratoRate!: number;
+    // CC 77 — Vibrato Depth (GM2 sound controller). 64 = no added depth;
+    // combines additively with the Mod Wheel (see `_vibratoFraction`).
+    vibratoDepth!: number;
+    // RPN 5 — Modulation Depth Range, in cents. GM2 default 50 (= 0.5
+    // semitone). The full-depth vibrato amplitude the Mod Wheel / CC 77
+    // map onto.
+    modDepthRangeCents!: number;
     // CC 74 — Brightness / Filter Cutoff. 0..127, 64 = neutral.
     // Mapped exponentially around 12 kHz so 0 ≈ 750 Hz, 127 ≈ 16 kHz.
     filterCutoff!: number;
@@ -267,6 +278,7 @@ export class Instrument<T> {
         this.setExpression(this.expression, time);
         this.setPanpot(this.panpot, time);
         this.setModulation(this.modulationValue, time);
+        this.setVibratoRate(this.vibratoRate, time);
         this.setFilterCutoff(this.filterCutoff, time);
         this.setFilterResonance(this.filterResonance, time);
         this.setReverbSend(this.reverbSendValue, time);
@@ -308,6 +320,9 @@ export class Instrument<T> {
         this.coarseTune = 0;
 
         this.modulationValue = 0;
+        this.vibratoRate = 64;
+        this.vibratoDepth = 64;
+        this.modDepthRangeCents = 50;
         this.filterCutoff = 64;
         this.filterResonance = 64;
         // GM2 default Reverb Send Level is 40 (0x28); Chorus stays 0.
@@ -401,10 +416,40 @@ export class Instrument<T> {
 
     setModulation(value: number, time: number) {
         this.modulationValue = value;
-        // 0..127 → 0..50 cents of vibrato amplitude. ±50 cents at 5 Hz is
-        // the classic "expressive" vibrato range; full-on still leaves the
-        // pitch within a quarter-tone of the nominal note.
-        this._rampParam(this._modDepth.gain, (value / 127) * 50, time);
+        this._applyVibratoDepth(time);
+    }
+
+    // CC 77 — Vibrato Depth (GM2). Combines with the Mod Wheel; 64 (the
+    // GM2 default) adds nothing, so a channel that only ever sees the Mod
+    // Wheel behaves exactly as before.
+    setVibratoDepth(value: number, time: number) {
+        this.vibratoDepth = value;
+        this._applyVibratoDepth(time);
+    }
+
+    // CC 76 — Vibrato Rate (GM2). 64 = base 5 Hz; ±64 steps = ∓ / ± one
+    // octave of LFO rate (0 → 2.5 Hz, 127 → ~9.9 Hz).
+    setVibratoRate(value: number, time: number) {
+        this.vibratoRate = value;
+        this._rampParam(this._modLfo.frequency, 5 * Math.pow(2, (value - 64) / 64), time);
+    }
+
+    // Combined vibrato amount in [0, 1]: the Mod Wheel fraction plus CC 77's
+    // signed offset (centered at its default 64), clamped. Both controllers
+    // can drive vibrato on their own; either at full and the other at
+    // default reaches (near) the full `modDepthRangeCents` amplitude.
+    private _vibratoFraction(): number {
+        const wheel = this.modulationValue / 127;
+        const depth = (this.vibratoDepth - 64) / 64;
+        return Math.min(1, Math.max(0, wheel + depth));
+    }
+
+    private _applyVibratoDepth(time: number) {
+        this._rampParam(
+            this._modDepth.gain,
+            this.modDepthRangeCents * this._vibratoFraction(),
+            time,
+        );
     }
 
     setFilterCutoff(value: number, time: number) {
@@ -505,6 +550,12 @@ export class Instrument<T> {
                 case 1: // Modulation Wheel
                     this.setModulation(event.value, time);
                     break;
+                case 76: // Vibrato Rate (GM2)
+                    this.setVibratoRate(event.value, time);
+                    break;
+                case 77: // Vibrato Depth (GM2)
+                    this.setVibratoDepth(event.value, time);
+                    break;
                 case 71: // Filter Resonance
                     this.setFilterResonance(event.value, time);
                     break;
@@ -560,6 +611,20 @@ export class Instrument<T> {
                 case 121: // ResetAllControl (RP-015 scope — not a full GM reset)
                     this.applyResetAllControllers(time);
                     break;
+                case 122: // Local Control on/off — no-op for a soft synth
+                    // (there is no local keyboard to disconnect).
+                    break;
+                case 123: // AllNotesOff
+                // CC 124–127 (Omni Off / Omni On / Mono On / Poly On) each
+                // imply an All Notes Off per the GM spec. We honor that;
+                // the omni / mono / poly mode itself stays poly (a mono
+                // voice allocator is out of scope).
+                case 124:
+                case 125:
+                case 126:
+                case 127:
+                    this.allNotesOff(time);
+                    break;
                 default:
                     if (this.patch) {
                         this.patch.receiveEvent(event, time);
@@ -608,6 +673,29 @@ export class Instrument<T> {
         }
     }
 
+    // CC 123 All Notes Off (and the implied All Notes Off of CC 124–127).
+    // Unlike CC 120 (All Sound Off), this keeps the release tail: every
+    // sounding note gets a normal NoteOff so its envelope releases. Also
+    // lifts the sustain pedal so pedal-held notes are released too.
+    allNotesOff(time: number) {
+        const patch = this.patch;
+        if (patch != null) {
+            const numbers = new Set<number>(this.notePool.noteNumberQueue);
+            for (const noteOff of this._sustainedNoteOffs.values()) {
+                numbers.add(noteOff.noteNumber);
+            }
+            for (const noteNumber of numbers) {
+                // The patch looks the note up by number only; the status
+                // byte's channel nibble is irrelevant (the Instrument is
+                // already the channel).
+                const dv = new DataView(Uint8Array.of(noteNumber, 0x40).buffer);
+                patch.receiveEvent(midi.Event.create(dv, 0, 0x80), time);
+            }
+        }
+        this.sustain = false;
+        this._sustainedNoteOffs.clear();
+    }
+
     private _dispatchDataEntry(time: number) {
         if (this._lastParamType === "rpn") {
             if (this.rpn === 0x3fff) return;
@@ -631,6 +719,10 @@ export class Instrument<T> {
             case 2: // channel coarse tuning: MSB only, center 0x40, ±64 semitones
                 this.coarseTune = ((data >> 7) & 0x7f) - 0x40;
                 this._updateDetuneOffset(time);
+                break;
+            case 5: // modulation depth range: MSB = semitones, LSB = cents/128
+                this.modDepthRangeCents = (((data >> 7) & 0x7f) + (data & 0x7f) / 128) * 100;
+                this._applyVibratoDepth(time);
                 break;
             default:
                 break;
