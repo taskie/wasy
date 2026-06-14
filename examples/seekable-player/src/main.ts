@@ -109,8 +109,6 @@ class Application {
             pianoRollCanvas.width,
             pianoRollCanvas.height,
         );
-        pianoRollCanvas.ondragover = (e) => e.preventDefault();
-        pianoRollCanvas.addEventListener("drop", (e) => this.onDrop(e));
 
         const keyboardCanvas = q<HTMLCanvasElement>("#keyboardCanvas");
         this.keyboardView = new KeyboardView(
@@ -147,6 +145,22 @@ class Application {
             void this.ensureAudio();
         });
         this.fileButton.addEventListener("change", (e) => this.onFileChange(e));
+
+        // Drag & drop is scoped to the Load SMF panel (the only place that
+        // owns the file input). Dropped files are reflected into that input
+        // so its filename label updates, then loaded through the same path.
+        const smfPanel = q<HTMLElement>("#panel-smf");
+        smfPanel.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            smfPanel.classList.add("drag-over");
+        });
+        smfPanel.addEventListener("dragleave", () => smfPanel.classList.remove("drag-over"));
+        smfPanel.addEventListener("drop", (e) => this.onDrop(e));
+        // A file dropped anywhere else would make the browser navigate to
+        // it and leave the app. Swallow the default so a misdrop is a no-op
+        // (the panel's own drop handler still loads on-target drops).
+        window.addEventListener("dragover", (e) => e.preventDefault());
+        window.addEventListener("drop", (e) => e.preventDefault());
         q<HTMLButtonElement>("#loadSongButton").addEventListener(
             "click",
             () => void this.onLoadSong(),
@@ -337,10 +351,22 @@ class Application {
 
     private async onDrop(e: DragEvent) {
         e.preventDefault();
+        q<HTMLElement>("#panel-smf").classList.remove("drag-over");
         const files = e.dataTransfer?.files;
         if (files == null || files.length === 0) return;
-        const buffer = await files[0].arrayBuffer();
-        await this.loadBuffer(buffer);
+        const file = files[0];
+        // Reflect the dropped file into the <input type="file"> so its
+        // filename label matches what's playing and a later re-pick starts
+        // from the same selection. `DataTransfer` is the only way to write
+        // `input.files`; guard it for the rare environment that throws.
+        try {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            this.fileButton.files = dt.files;
+        } catch {
+            // Reflection unavailable — loading below still works.
+        }
+        await this.loadFile(file);
     }
 
     private async loadFile(file: File) {
