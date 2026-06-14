@@ -1,0 +1,6 @@
+# Build output — generated / minified code, never hand-formatted.
+# oxfmt auto-loads this file. A bare `dist` in .gitignore does not exclude
+# the nested example builds (examples/*/dist) when `examples` is passed
+# explicitly to the `fmt` / `fmt:check` scripts, so list the build dirs here.
+dist/
+build/
