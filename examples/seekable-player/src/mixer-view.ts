@@ -28,6 +28,20 @@ const MASTER_DEFAULT_VALUE = 80;
 const masterValueToGain = (value: number) =>
     MASTER_REFERENCE_GAIN * (value / MASTER_DEFAULT_VALUE) ** 2;
 
+const MASTER_STORAGE_KEY = "wasy-master-volume";
+
+const loadStoredMasterValue = (): number => {
+    try {
+        const raw = localStorage.getItem(MASTER_STORAGE_KEY);
+        if (raw == null) return MASTER_DEFAULT_VALUE;
+        const value = Number(raw);
+        if (!Number.isFinite(value)) return MASTER_DEFAULT_VALUE;
+        return Math.min(100, Math.max(0, Math.round(value)));
+    } catch {
+        return MASTER_DEFAULT_VALUE;
+    }
+};
+
 // 16-channel mixer + master fader. Writes to `synth.channelGains[ch].gain`
 // and `synth.gain.gain` so SMF-driven CC 7 / CC 11 stay independent.
 // Solo / mute / volume state lives here; the synth itself has no concept
@@ -36,7 +50,7 @@ export class MixerView {
     private synth: SynthEngine | null = null;
     private channels: ChannelState[] = [];
     private strips: ChannelStrip[] = [];
-    private masterValue = MASTER_DEFAULT_VALUE;
+    private masterValue = loadStoredMasterValue();
     private masterSlider!: HTMLInputElement;
     private masterReadout!: HTMLOutputElement;
 
@@ -103,6 +117,11 @@ export class MixerView {
             this.masterValue = Number(this.masterSlider.value);
             this.masterReadout.value = `${this.masterSlider.value}%`;
             this.applyMaster();
+            try {
+                localStorage.setItem(MASTER_STORAGE_KEY, String(this.masterValue));
+            } catch {
+                // localStorage unavailable (private mode etc.) — non-fatal.
+            }
         });
         masterRow.appendChild(this.masterSlider);
         this.masterReadout = document.createElement("output");
