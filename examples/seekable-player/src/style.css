@@ -165,6 +165,13 @@ section.partition {
     background-color: var(--color-bg);
 }
 
+/* Drag & drop target highlight (Load SMF panel). */
+#panel-smf.drag-over {
+    background-color: var(--color-bg-alt);
+    outline: 2px dashed var(--color-accent);
+    outline-offset: -4px;
+}
+
 .panel-titlebar {
     display: flex;
     align-items: center;
